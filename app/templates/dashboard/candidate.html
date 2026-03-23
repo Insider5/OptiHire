@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Candidate Dashboard - OptiHire{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-r from-primary-600 to-primary-800 text-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-4xl font-bold mb-2">Welcome, {{ current_user.full_name or current_user.username }}!</h1>
+        <p class="text-xl text-gray-100">Track your applications and discover new opportunities</p>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+        <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Total Applications</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.total_applications }}</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">📄</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Shortlisted</p>
+                    <p class="text-3xl font-bold text-green-600 mt-1">{{ stats.shortlisted }}</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">✅</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Pending</p>
+                    <p class="text-3xl font-bold text-yellow-600 mt-1">{{ stats.pending }}</p>
+                </div>
+                <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">⏰</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Avg Match Score</p>
+                    <p class="text-3xl font-bold text-primary-600 mt-1">{{ "%.1f"|format(stats.avg_score) }}%</p>
+                </div>
+                <div class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">🎯</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+        <!-- Recommended Jobs -->
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                <span class="text-3xl mr-3">💼</span>
+                Recommended Jobs
+            </h2>
+
+            {% if recommended_jobs %}
+            <div class="space-y-4">
+                {% for item in recommended_jobs[:5] %}
+                <div class="border border-gray-200 rounded-lg p-4 hover:border-primary-400 transition">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-900">{{ item.job.title }}</h3>
+                            <p class="text-sm text-gray-600">{{ item.job.company }}</p>
+                        </div>
+                        <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-semibold">
+                            {{ "%.0f"|format(item.score * 100) }}% Match
+                        </span>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <a href="{{ url_for('jobs.view_job', job_id=item.job.id) }}"
+                            class="flex-1 text-center text-sm bg-gray-100 text-gray-700 py-2 rounded hover:bg-gray-200">
+                            View Details
+                        </a>
+                        <a href="{{ url_for('candidates.apply_job', job_id=item.job.id) }}"
+                            class="flex-1 text-center text-sm bg-primary-600 text-white py-2 rounded hover:bg-primary-700">
+                            Apply
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <p class="text-gray-600 mb-4">Upload a resume to get personalized job recommendations</p>
+                <a href="{{ url_for('candidates.upload_resume') }}"
+                    class="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 inline-block">
+                    Upload Resume
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Notifications -->
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                <span class="text-3xl mr-3">🔔</span>
+                Notifications
+            </h2>
+
+            {% if notifications %}
+            <div class="space-y-3">
+                {% for notif in notifications %}
+                <div
+                    class="border-l-4 {% if notif.notification_type == 'success' %}border-green-500 bg-green-50{% elif notif.notification_type == 'warning' %}border-yellow-500 bg-yellow-50{% else %}border-blue-500 bg-blue-50{% endif %} p-3 rounded">
+                    <h4 class="font-semibold text-gray-900 text-sm">{{ notif.title }}</h4>
+                    <p class="text-xs text-gray-600 mt-1">{{ notif.message }}</p>
+                    <p class="text-xs text-gray-500 mt-2">{{ notif.created_at.strftime('%b %d, %Y') }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <p class="text-gray-600">No notifications yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recent Applications -->
+    <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                <span class="text-3xl mr-3">📋</span>
+                Recent Applications
+            </h2>
+            <a href="{{ url_for('candidates.my_applications') }}"
+                class="text-primary-600 hover:text-primary-700 font-semibold">
+                View All →
+            </a>
+        </div>
+
+        {% if applications %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Job Title</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Company</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Match Score</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Applied</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications[:10] %}
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="py-3 px-4 font-medium text-gray-900">{{ app.job.title }}</td>
+                        <td class="py-3 px-4 text-gray-700">{{ app.job.company }}</td>
+                        <td class="py-3 px-4">
+                            <span
+                                class="font-semibold {% if app.similarity_score >= 0.7 %}text-green-600{% elif app.similarity_score >= 0.5 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                                {{ "%.0f"|format(app.similarity_score * 100) }}%
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            {% set is_new = app.get('updated_at') and app.get('updated_at') != app.get('applied_at', '') %}
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold
+                                {% if app.status == 'shortlisted' %}bg-green-100 text-green-700
+                                {% elif app.status == 'pending' %}bg-yellow-100 text-yellow-700
+                                {% elif app.status == 'rejected' %}bg-red-100 text-red-700
+                                {% elif app.status == 'interview' %}bg-blue-100 text-blue-700
+                                {% elif app.status == 'hired' %}bg-purple-100 text-purple-700
+                                {% endif %}">
+                                {% if is_new %}<span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>{% endif %}
+                                {{ app.status.title() }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-sm text-gray-600">{{ app.applied_at.strftime('%b %d, %Y') }}</td>
+                        <td class="py-3 px-4">
+                            <a href="{{ url_for('candidates.view_application', application_id=app.id) }}"
+                                class="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                View Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <div class="text-6xl mb-4">📝</div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">No applications yet</h3>
+            <p class="text-gray-600 mb-6">Start applying to jobs to see them here</p>
+            <a href="{{ url_for('jobs.list_jobs') }}"
+                class="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 inline-block">
+                Browse Jobs
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

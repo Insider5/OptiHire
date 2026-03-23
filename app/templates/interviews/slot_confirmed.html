@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Interview Confirmed — OptiHire{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center py-16 px-4">
+    <div class="w-full max-w-lg text-center">
+
+        {% if already_done %}
+        <!-- Already picked a slot previously -->
+        <div class="text-6xl mb-6">✅</div>
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-3">Slot Already Confirmed</h1>
+        <p class="text-gray-500 mb-6">You've already chosen your interview slot. No action needed.</p>
+
+        <div class="bg-white rounded-2xl shadow border border-green-100 p-6 mb-6 text-left">
+            <p class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Your Confirmed Slot</p>
+            <p class="text-xl font-bold text-green-700">📅 {{ chosen_slot }}</p>
+            {% if job %}
+            <p class="text-sm text-gray-500 mt-2">{{ job.title }}{% if job.company %} · {{ job.company }}{% endif %}</p>
+            {% endif %}
+        </div>
+
+        <p class="text-sm text-gray-400">If you need to reschedule, please contact the recruiter directly via email.</p>
+
+        {% else %}
+        <!-- Fresh confirmation -->
+        <div class="inline-flex items-center justify-center w-24 h-24 bg-green-100 rounded-full mb-6">
+            <span class="text-5xl">🎉</span>
+        </div>
+
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-3">You're Confirmed!</h1>
+        <p class="text-gray-500 mb-8">Your interview slot has been locked in. We'll see you there!</p>
+
+        <div class="bg-white rounded-2xl shadow-lg border border-green-200 p-8 text-left mb-6">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl">📅</div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Your Interview Slot</p>
+                    <p class="text-xl font-bold text-gray-900">{{ chosen_slot }}</p>
+                    {% if job %}
+                    <p class="text-sm font-semibold text-indigo-600 mt-2">{{ job.title }}{% if job.company %} · {{ job.company }}{% endif %}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- What's next -->
+        <div class="bg-white rounded-2xl shadow border border-gray-100 p-6 text-left mb-6">
+            <h3 class="font-bold text-gray-800 mb-4">What happens next?</h3>
+            <ol class="space-y-3">
+                <li class="flex gap-3 text-sm text-gray-700">
+                    <span class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0">1</span>
+                    <span>A <strong>confirmation email</strong> has been sent to you with your slot details.</span>
+                </li>
+                <li class="flex gap-3 text-sm text-gray-700">
+                    <span class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0">2</span>
+                    <span>The <strong>recruiter has been notified</strong> of your slot selection.</span>
+                </li>
+                <li class="flex gap-3 text-sm text-gray-700">
+                    <span class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0">3</span>
+                    <span>The recruiter will send you the <strong>meeting/call details</strong> closer to the date.</span>
+                </li>
+                <li class="flex gap-3 text-sm text-gray-700">
+                    <span class="w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0">✓</span>
+                    <span><strong>Be available 5 minutes early</strong> and have your resume handy.</span>
+                </li>
+            </ol>
+        </div>
+
+        {% endif %}
+
+        <p class="text-center text-xs text-gray-400">
+            Powered by <strong class="text-indigo-500">OptiHire</strong> · AI-Powered Recruitment Platform
+        </p>
+    </div>
+</div>
+{% endblock %}

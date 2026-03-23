@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Jobs - OptiHire{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-br from-primary-600 to-primary-800 text-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-4xl font-bold mb-4">Browse Job Opportunities</h1>
+        <p class="text-xl text-gray-100">Find your next career move with AI-powered matching</p>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Search + Domain Filter Bar -->
+    <div class="mb-8">
+        <form method="GET" action="{{ url_for('jobs.list_jobs') }}" class="flex flex-wrap gap-3 items-center">
+            <input type="text" name="search" value="{{ search }}"
+                placeholder="Search jobs by title, company, or description..."
+                class="flex-1 min-w-[200px] px-6 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+            <!-- Domain Filter -->
+            <select name="domain" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm font-medium text-gray-700 bg-white">
+                <option value="">All Domains</option>
+                {% set domains = ['Backend', 'Frontend', 'ML / AI', 'DevOps', 'Mobile', 'Data Science', 'Cybersecurity', 'Cloud'] %}
+                {% for d in domains %}
+                <option value="{{ d }}" {% if request.args.get('domain') == d %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit"
+                class="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition">
+                Search
+            </button>
+            {% if search or request.args.get('domain') %}
+            <a href="{{ url_for('jobs.list_jobs') }}" class="text-sm text-gray-500 hover:text-gray-700 underline self-center">Clear filters</a>
+            {% endif %}
+        </form>
+        <!-- Domain Quick-Pills (client-side) -->
+        <div class="flex flex-wrap gap-2 mt-4">
+            {% set domain_icons = {'Backend': '🔧', 'Frontend': '🎨', 'ML / AI': '🤖', 'DevOps': '⚙️', 'Mobile': '📱', 'Data Science': '📊', 'Cybersecurity': '🔒', 'Cloud': '☁️'} %}
+            {% for d in domains %}
+            <a href="{{ url_for('jobs.list_jobs', domain=d, search=search) }}"
+               class="px-3 py-1 rounded-full text-xs font-semibold border-2 transition
+               {% if request.args.get('domain') == d %}border-primary-500 bg-primary-100 text-primary-700{% else %}border-gray-200 text-gray-600 hover:border-primary-300 hover:bg-primary-50{% endif %}">
+                {{ domain_icons.get(d, '🏷️') }} {{ d }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Jobs Grid -->
+    {% if jobs['items'] %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        {% for job in jobs['items'] %}
+        <div class="bg-white rounded-xl p-6 shadow-lg hover-lift border border-gray-100">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex-1">
+                    <h3 class="text-xl font-bold text-gray-900 mb-1">{{ job.title }}</h3>
+                    <p class="text-gray-600 font-medium">{{ job.company }}</p>
+                </div>
+                {% if job.experience_level %}
+                <span class="bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-xs font-semibold">
+                    {{ job.experience_level }}
+                </span>
+                {% endif %}
+            </div>
+
+            <p class="text-gray-700 mb-4 line-clamp-3">{{ job.description[:150] }}...</p>
+
+            <div class="space-y-2 mb-4">
+                {% if job.location %}
+                <p class="text-sm text-gray-600 flex items-center">
+                    <span class="mr-2">📍</span> {{ job.location }}
+                </p>
+                {% endif %}
+
+                {% if job.job_type %}
+                <p class="text-sm text-gray-600 flex items-center">
+                    <span class="mr-2">💼</span> {{ job.job_type }}
+                </p>
+                {% endif %}
+
+                {% if job.salary_range %}
+                <p class="text-sm text-gray-600 flex items-center">
+                    <span class="mr-2">💰</span> {{ job.salary_range }}
+                </p>
+                {% endif %}
+            </div>
+
+            <div class="flex gap-2">
+                <a href="{{ url_for('jobs.view_job', job_id=job.id) }}"
+                    class="flex-1 text-center bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700 font-medium text-sm">
+                    View Details
+                </a>
+                {% if current_user.is_authenticated and current_user.user_type == 'candidate' %}
+                <a href="{{ url_for('candidates.apply_job', job_id=job.id) }}"
+                    class="flex-1 text-center bg-accent-400 text-gray-900 py-2 rounded-lg hover:bg-accent-500 font-medium text-sm">
+                    Apply Now
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if jobs.pages > 1 %}
+    <div class="flex justify-center gap-2">
+        {% if jobs.has_prev %}
+        <a href="{{ url_for('jobs.list_jobs', page=jobs.prev_num, search=search) }}"
+            class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+            Previous
+        </a>
+        {% endif %}
+
+        <span class="px-4 py-2 text-gray-700">
+            Page {{ jobs.page }} of {{ jobs.pages }}
+        </span>
+
+        {% if jobs.has_next %}
+        <a href="{{ url_for('jobs.list_jobs', page=jobs.next_num, search=search) }}"
+            class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+            Next
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-20">
+        <div class="text-6xl mb-4">🔍</div>
+        <h3 class="text-2xl font-bold text-gray-900 mb-2">No jobs found</h3>
+        <p class="text-gray-600">Try adjusting your search criteria</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .line-clamp-3 {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}

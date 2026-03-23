@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Interview Room — OptiHire</title>
+<meta name="csrf-token" content="{{ csrf_token() }}"/>
+
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class', theme: { extend: {} } };</script>
+
+<!-- CodeMirror 5 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/go/go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+
+<!-- Jitsi Meet External API -->
+<script src="https://meet.jit.si/external_api.js" defer></script>
+
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', 'Inter', Arial, sans-serif; margin: 0; padding: 0; }
+
+  /* ── CodeMirror ── */
+  .CodeMirror {
+    height: 100%;
+    font-size: 13.5px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    line-height: 1.6;
+  }
+  #editor-wrap { position: relative; height: calc(100% - 44px); overflow: hidden; }
+  #editor-wrap .CodeMirror { height: 100%; }
+
+  /* ── Scrollbars ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #1a1a2e; }
+  ::-webkit-scrollbar-thumb { background: #3d3d5c; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #5a5a8a; }
+
+  /* ── Sync dot ── */
+  .sync-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+  .sync-dot.syncing { background:#facc15; animation: pulse 1s infinite; }
+  .sync-dot.synced  { background:#22c55e; }
+  .sync-dot.error   { background:#ef4444; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  /* ── Jitsi container ── */
+  #jitsi-container, #jitsi-container > iframe {
+    width: 100%; height: 100%; border: none; border-radius: 10px; display: block;
+  }
+
+  /* ── Interview question items ── */
+  .q-item {
+    border-left: 3px solid #7c3aed;
+    padding: 8px 12px 8px 10px;
+    background: rgba(124,58,237,0.07);
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 6px;
+  }
+
+  /* ── Output terminal ── */
+  .output-terminal {
+    background: #0d1117;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px;
+    font-family: 'JetBrains Mono','Cascadia Code','Consolas', monospace;
+    font-size: 12.5px;
+    padding: 10px 14px;
+    overflow-y: auto;
+    max-height: 180px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* ── Left panel scrollable ── */
+  #left-pane { overflow-y: auto; overflow-x: hidden; }
+
+  /* ── Right pane layout ── */
+  #right-pane { display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Toolbar btn base ── */
+  .tb-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.10); cursor: pointer;
+    background: rgba(255,255,255,0.05); color: #9ca3af; transition: all .15s;
+  }
+  .tb-btn:hover { border-color: rgba(255,255,255,0.2); color: #e5e7eb; }
+  .tb-btn.run   { background:rgba(34,197,94,.12); color:#4ade80; border-color:rgba(34,197,94,.3); }
+  .tb-btn.run:hover { background:rgba(34,197,94,.22); }
+  .tb-btn.danger { background:rgba(239,68,68,.12); color:#f87171; border-color:rgba(239,68,68,.3); }
+
+  /* ── Live badge ── */
+  @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .live-dot { animation: livePulse 1.8s infinite; }
+
+  /* ── Fade-in ── */
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+  .fade-in { animation: fadeIn .4s ease; }
+</style>
+</head>
+
+<body class="h-screen overflow-hidden flex flex-col" style="background:#0d1117;color:#e5e7eb">
+
+<!-- ══════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════ -->
+<header class="flex items-center justify-between px-4 flex-shrink-0"
+        style="height:50px;background:#111827;border-bottom:1px solid rgba(255,255,255,0.07)">
+
+  <!-- Left: brand + room info -->
+  <div class="flex items-center gap-3">
+    <a href="{{ url_for('main.index') }}" class="flex items-center gap-1.5 group" title="Back to OptiHire">
+      <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white font-black text-sm"
+           style="background:linear-gradient(135deg,#F042FF,#7226FF)">O</div>
+      <span class="hidden sm:block font-bold text-sm text-gray-300 group-hover:text-white">OptiHire</span>
+    </a>
+    <span class="text-gray-600">|</span>
+    <span class="text-sm text-gray-400 hidden sm:block">Interview Room</span>
+    {% if not room_ended %}
+    <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold"
+          style="background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25)">
+      <span class="w-1.5 h-1.5 rounded-full bg-green-400 live-dot inline-block"></span>
+      LIVE
+    </span>
+    {% else %}
+    <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
+          style="background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.25)">
+      ENDED
+    </span>
+    {% endif %}
+  </div>
+
+  <!-- Center: candidate + job info -->
+  <div class="hidden lg:flex flex-col items-center leading-tight">
+    <span class="text-sm font-semibold text-gray-200">
+      {{ candidate.full_name if candidate else 'Candidate' }}
+    </span>
+    <span class="text-xs text-gray-500">
+      {{ job.title if job else '' }}{% if job and job.company %} · {{ job.company }}{% endif %}
+    </span>
+  </div>
+
+  <!-- Right: sync + timer + controls -->
+  <div class="flex items-center gap-2">
+    <!-- Sync indicator -->
+    <div class="hidden sm:flex items-center gap-1.5 text-xs text-gray-600">
+      <span id="sync-dot" class="sync-dot synced"></span>
+      <span id="sync-label">Synced</span>
+    </div>
+
+    <!-- Timer -->
+    <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold"
+         style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:#facc15">
+      ⏱ <span id="timer">00:00</span>
+    </div>
+
+    <!-- Recruiter: End Interview / Feedback link -->
+    {% if role == 'recruiter' %}
+      {% if not room_ended %}
+      <form method="POST"
+            action="{{ url_for('interview_room.end_room', application_id=application.id) }}"
+            onsubmit="return confirm('End this interview and go to feedback?');"
+            class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" class="tb-btn danger text-xs py-1.5 px-3">
+          ⏹ End Interview
+        </button>
+      </form>
+      {% else %}
+      <a href="{{ url_for('interview_room.feedback', application_id=application.id) }}"
+         class="tb-btn text-xs py-1.5 px-3"
+         style="background:linear-gradient(135deg,#F042FF,#7226FF);color:#fff;border-color:transparent">
+        📝 Submit Feedback
+      </a>
+      {% endif %}
+    {% else %}
+    <!-- Candidate: Leave button -->
+    <a href="{{ url_for('candidates.view_application', application_id=application.id) }}"
+       class="tb-btn text-xs py-1.5 px-3"
+       onclick="return confirm('Leave the interview room?')">
+      ← Leave
+    </a>
+    {% endif %}
+  </div>
+</header>
+
+
+<!-- ══════════════════════════════════════════
+     MAIN CONTENT (2-pane)
+══════════════════════════════════════════ -->
+<main class="flex flex-1 overflow-hidden" style="height:calc(100vh - 50px)">
+
+  <!-- ── LEFT PANE: Video + Candidate + Questions + Notes ── -->
+  <div id="left-pane" class="flex flex-col flex-shrink-0"
+       style="width:38%;min-width:280px;max-width:460px;background:#111827;border-right:1px solid rgba(255,255,255,0.07)">
+
+    <!-- Jitsi Video -->
+    <div class="p-3 flex-shrink-0">
+      <div id="jitsi-container" class="rounded-xl overflow-hidden relative"
+           style="height:260px;background:#000;border:1px solid rgba(255,255,255,0.07)">
+        <div id="jitsi-placeholder" class="absolute inset-0 flex flex-col items-center justify-center">
+          <div class="w-14 h-14 rounded-full flex items-center justify-center mb-3"
+               style="background:rgba(124,58,237,.18)">
+            <span class="text-2xl">📹</span>
+          </div>
+          <p class="text-sm text-gray-400">Connecting video…</p>
+          <p class="text-xs text-gray-600 mt-1">Allow camera &amp; mic access when prompted</p>
+          <div class="mt-3 flex gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-purple-600 animate-bounce" style="animation-delay:0s"></span>
+            <span class="w-2 h-2 rounded-full bg-purple-600 animate-bounce" style="animation-delay:.15s"></span>
+            <span class="w-2 h-2 rounded-full bg-purple-600 animate-bounce" style="animation-delay:.3s"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Candidate Info Card -->
+    <div class="mx-3 mb-3 rounded-xl p-4 flex-shrink-0 fade-in"
+         style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div class="flex items-start gap-3">
+        <!-- Avatar -->
+        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 text-white"
+             style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
+          {{ (candidate.full_name or 'C')[0].upper() if candidate else 'C' }}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-gray-100 text-sm truncate">
+            {{ candidate.full_name if candidate else 'Candidate' }}
+          </p>
+          <p class="text-xs text-gray-500 truncate">{{ candidate.email if candidate else '' }}</p>
+          {% set score_pct = ((application.similarity_score or 0) * 100) | round | int %}
+          <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <span class="text-xs px-2 py-0.5 rounded-full font-semibold"
+                  style="background:rgba(124,58,237,.18);color:#a78bfa">
+              {{ score_pct }}% Match
+            </span>
+            <span class="text-xs px-2 py-0.5 rounded-full"
+                  style="background:rgba(34,197,94,.10);color:#4ade80;border:1px solid rgba(34,197,94,.2)">
+              Interview
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skills -->
+      {% if skills %}
+      <div class="flex flex-wrap gap-1.5 mt-3">
+        {% for skill in skills[:6] %}
+        <span class="text-xs px-2 py-0.5 rounded-full"
+              style="background:rgba(79,70,229,.12);color:#a5b4fc;border:1px solid rgba(79,70,229,.2)">
+          {{ skill }}
+        </span>
+        {% endfor %}
+        {% if skills|length > 6 %}
+        <span class="text-xs text-gray-600">+{{ skills|length - 6 }} more</span>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Job label -->
+      {% if job %}
+      <p class="text-xs text-gray-600 mt-2 truncate">📋 {{ job.title }}</p>
+      {% endif %}
+
+      <!-- Slot info -->
+      {% if application.get('chosen_slot') %}
+      <p class="text-xs mt-2 font-medium" style="color:#a78bfa">
+        🗓 {{ application.chosen_slot }}
+        {% if application.get('interview_duration') %} · {{ application.interview_duration }} min{% endif %}
+      </p>
+      {% endif %}
+
+      <!-- Links -->
+      <div class="flex gap-2 mt-3">
+        {% if application.get('resume_id') %}
+        <a href="{{ url_for('candidates.view_resume', resume_id=application.resume_id) }}"
+           target="_blank"
+           class="flex-1 text-center py-1.5 rounded-lg text-xs font-semibold transition"
+           style="background:rgba(124,58,237,.12);color:#a78bfa;border:1px solid rgba(124,58,237,.25)">
+          📄 Resume
+        </a>
+        {% endif %}
+        <a href="{{ url_for('candidates.view_application', application_id=application.id) }}"
+           target="_blank"
+           class="flex-1 text-center py-1.5 rounded-lg text-xs font-semibold transition"
+           style="background:rgba(255,255,255,0.04);color:#9ca3af;border:1px solid rgba(255,255,255,.08)">
+          📊 Application
+        </a>
+      </div>
+    </div>
+
+    <!-- AI Interview Questions (collapsible) -->
+    {% if interview_questions %}
+    <div class="mx-3 mb-3 rounded-xl overflow-hidden flex-shrink-0"
+         style="border:1px solid rgba(255,255,255,0.07)">
+      <button onclick="togglePanel('q-list','q-arrow')"
+              class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold text-gray-300 hover:text-white transition text-left"
+              style="background:rgba(255,255,255,0.04)">
+        <span>🤖 Questions ({{ interview_questions|length }})</span>
+        <span id="q-arrow" class="text-gray-600 text-xs">▼</span>
+      </button>
+      <div id="q-list" class="px-4 pb-4 pt-2 hidden" style="background:rgba(255,255,255,0.02)">
+        {% for q in interview_questions %}
+        {% set qdata = q if q is mapping else {} %}
+        <div class="q-item">
+          <p class="text-xs font-bold mb-0.5" style="color:#a78bfa">
+            Q{{ loop.index }}{% if qdata.get('difficulty') %} · <span class="font-normal opacity-70">{{ qdata.difficulty }}</span>{% endif %}
+          </p>
+          <p class="text-xs text-gray-300 leading-relaxed">{{ qdata.get('question', q) }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Recruiter Notes (recruiter only, collapsible) -->
+    {% if role == 'recruiter' %}
+    <div class="mx-3 mb-3 rounded-xl overflow-hidden flex-shrink-0"
+         style="border:1px solid rgba(255,255,255,0.07)">
+      <div class="flex items-center justify-between px-4 py-2.5"
+           style="background:rgba(255,255,255,0.04)">
+        <button onclick="togglePanel('notes-body','notes-arrow')"
+                class="flex items-center gap-2 text-sm font-semibold text-gray-300 hover:text-white transition">
+          📝 My Notes
+          <span id="notes-arrow" class="text-gray-600 text-xs">▼</span>
+        </button>
+        <span id="notes-saved-label" class="text-xs text-gray-600">auto-saves</span>
+      </div>
+      <div id="notes-body" class="p-3 hidden" style="background:rgba(255,255,255,0.02)">
+        <textarea id="recruiter-notes" rows="5"
+                  placeholder="Type your observations here… (auto-saved every second)"
+                  class="w-full text-xs rounded-lg p-3 resize-none focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  style="background:#0d1117;border:1px solid rgba(255,255,255,0.08);color:#d1d5db;font-family:inherit">{{ application.get('room_recruiter_notes', '') | e }}</textarea>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Spacer -->
+    <div class="flex-1 min-h-4"></div>
+  </div>
+
+  <!-- ── RIGHT PANE: Code Editor + Output ── -->
+  <div id="right-pane" class="flex-1 overflow-hidden" style="background:#0d1117">
+
+    <!-- Code Toolbar -->
+    <div class="flex items-center gap-2 px-3 flex-shrink-0"
+         style="height:44px;background:#111827;border-bottom:1px solid rgba(255,255,255,0.07)">
+
+      <!-- Language selector -->
+      <select id="lang-select" onchange="changeLang(this.value)"
+              class="text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-500 cursor-pointer"
+              style="background:#1f2937;border:1px solid rgba(255,255,255,0.1);color:#e5e7eb">
+        {% for key, name in lang_names.items() %}
+        <option value="{{ key }}" {% if key == current_language %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+
+      <div class="w-px h-4" style="background:rgba(255,255,255,0.1)"></div>
+
+      <button onclick="runCode()" id="run-btn" class="tb-btn run">▶ Run</button>
+      <button onclick="copyCode()" id="copy-btn" class="tb-btn">📋 Copy</button>
+      <button onclick="resetCode()" class="tb-btn">↺ Reset</button>
+
+      <div class="flex-1"></div>
+
+      {% if room_ended %}
+      <span class="text-xs px-2 py-0.5 rounded"
+            style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2)">
+        Session Ended
+      </span>
+      {% endif %}
+    </div>
+
+    <!-- CodeMirror editor fills the remaining height above the output panel -->
+    <div id="editor-wrap">
+      <textarea id="code-editor">{{ current_code | e }}</textarea>
+    </div>
+
+    <!-- Output Panel (collapsible, starts open) -->
+    <div class="flex-shrink-0" style="border-top:1px solid rgba(255,255,255,0.07)">
+      <button onclick="togglePanel('output-body','output-arrow')"
+              class="w-full flex items-center justify-between px-4 py-2 text-xs font-semibold text-gray-500 hover:text-gray-300 transition"
+              style="background:#111827">
+        <span>⚡ Output</span>
+        <span id="output-arrow" class="text-xs">▲</span>
+      </button>
+      <div id="output-body" style="padding:0 12px 10px;background:#0d1117">
+        <div class="output-terminal" style="color:#9ca3af">
+          <span id="output-text">Press ▶ Run to execute code…</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end right-pane -->
+</main>
+
+
+<!-- ══════════════════════════════════════════
+     ROOM ENDED OVERLAY (candidate only)
+══════════════════════════════════════════ -->
+{% if room_ended and role == 'candidate' %}
+<div id="ended-overlay"
+     class="fixed inset-0 flex items-center justify-center z-50 fade-in"
+     style="background:rgba(0,0,0,0.75);backdrop-filter:blur(6px)">
+  <div class="rounded-2xl p-8 text-center max-w-sm mx-4"
+       style="background:#1f2937;border:1px solid rgba(255,255,255,0.1)">
+    <div class="text-5xl mb-4">✅</div>
+    <h2 class="text-2xl font-bold text-white mb-2">Interview Completed</h2>
+    <p class="text-sm text-gray-400 mb-6">
+      The recruiter has ended the session. You'll receive
+      a notification about the outcome soon.
+    </p>
+    <a href="{{ url_for('candidates.view_application', application_id=application.id) }}"
+       class="inline-block px-6 py-3 rounded-xl text-white font-semibold transition hover:opacity-90"
+       style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
+      View Application →
+    </a>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════ -->
+<script>
+/* ── Constants injected by Jinja ── */
+const APPLICATION_ID  = {{ application.id | tojson }};
+const ROLE            = {{ role | tojson }};
+const ROOM_ENDED_INIT = {{ room_ended | tojson }};
+const CSRF_TOKEN      = {{ csrf_token() | tojson }};
+const DISPLAY_NAME    = {{ (current_user.full_name or current_user.username) | tojson }};
+const STARTER_CODES   = {{ starter_codes | tojson }};
+const OPENED_AT_ISO   = {{ (application.room_opened_at or '') | tojson }};
+
+/* ── CodeMirror mode map ── */
+const CM_MODES = {
+  python: 'python', javascript: 'javascript',
+  java: 'text/x-java', cpp: 'text/x-c++src',
+  sql: 'text/x-sql', typescript: 'text/typescript',
+  go: 'text/x-go', rust: 'text/x-rustsrc'
+};
+
+/* ── Init CodeMirror ── */
+var editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+  mode:             CM_MODES[{{ current_language | tojson }}] || 'python',
+  theme:            'monokai',
+  lineNumbers:      true,
+  indentUnit:       4,
+  tabSize:          4,
+  indentWithTabs:   false,
+  matchBrackets:    true,
+  autoCloseBrackets:true,
+  lineWrapping:     false,
+  readOnly:         ROOM_ENDED_INIT,
+  extraKeys: { 'Tab': cm => cm.replaceSelection('    ') }
+});
+
+/* Resize editor to fill its container */
+function resizeEditor() {
+  var wrap = document.getElementById('editor-wrap');
+  if (wrap) editor.setSize('100%', wrap.offsetHeight + 'px');
+}
+window.addEventListener('resize', resizeEditor);
+setTimeout(resizeEditor, 100);
+window.addEventListener('load',  function(){ setTimeout(resizeEditor, 200); });
+
+/* ── Sync state ── */
+var lastEditTime   = 0;
+var lastSyncedCode = editor.getValue();
+var pushTimer      = null;
+
+function setSyncState(s) {
+  var dot   = document.getElementById('sync-dot');
+  var label = document.getElementById('sync-label');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + s;
+  label.textContent = s === 'syncing' ? 'Syncing…' : s === 'error' ? 'Error' : 'Synced';
+}
+
+function apiPost(payload) {
+  setSyncState('syncing');
+  fetch('/interview/room/' + APPLICATION_ID + '/state', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+    body:    JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(d => setSyncState(d.ok ? 'synced' : 'error'))
+  .catch(() => setSyncState('error'));
+}
+
+/* Poll server every 2 s for remote changes */
+setInterval(function() {
+  fetch('/interview/room/' + APPLICATION_ID + '/state')
+  .then(r => r.json())
+  .then(data => {
+    if (data.ended && !ROOM_ENDED_INIT) {
+      editor.setOption('readOnly', true);
+      {% if role == 'candidate' %}
+      var ov = document.getElementById('ended-overlay');
+      if (ov) ov.style.display = 'flex';
+      {% endif %}
+    }
+    var timeSinceEdit = Date.now() - lastEditTime;
+    if (data.code && data.code !== lastSyncedCode && timeSinceEdit > 3000) {
+      editor.setValue(data.code);
+      lastSyncedCode = data.code;
+    }
+    var sel = document.getElementById('lang-select');
+    if (data.language && sel && data.language !== sel.value && timeSinceEdit > 3000) {
+      sel.value = data.language;
+      editor.setOption('mode', CM_MODES[data.language] || 'python');
+      lastSyncedCode = data.code || lastSyncedCode;
+    }
+  })
+  .catch(function(){});
+}, 2000);
+
+/* Debounced push on editor change */
+editor.on('change', function(cm, change) {
+  if (change.origin === 'setValue') return;
+  lastEditTime = Date.now();
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(function() {
+    var code = editor.getValue();
+    lastSyncedCode = code;
+    apiPost({ code: code });
+  }, 800);
+});
+
+/* ── Language change ── */
+var currentLang = {{ current_language | tojson }};
+function changeLang(lang) {
+  currentLang = lang;
+  editor.setOption('mode', CM_MODES[lang] || 'python');
+  apiPost({ language: lang });
+}
+
+function resetCode() {
+  if (!confirm('Reset to starter code? Current code will be lost.')) return;
+  var starter = STARTER_CODES[currentLang] || '// Write your code here\n';
+  editor.setValue(starter);
+  lastSyncedCode = starter;
+  apiPost({ code: starter });
+}
+
+/* ── Copy code ── */
+function copyCode() {
+  navigator.clipboard.writeText(editor.getValue()).then(function() {
+    var btn = document.getElementById('copy-btn');
+    var orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.style.color = '#4ade80';
+    setTimeout(function() { btn.textContent = orig; btn.style.color = ''; }, 1600);
+  });
+}
+
+/* ── Run code via Piston public API ── */
+const PISTON_MAP = {
+  python:     { language:'python',     version:'3.10.0'  },
+  javascript: { language:'javascript', version:'18.15.0' },
+  java:       { language:'java',       version:'15.0.2'  },
+  cpp:        { language:'c++',        version:'10.2.0'  },
+  typescript: { language:'typescript', version:'5.0.3'   },
+  go:         { language:'go',         version:'1.16.2'  },
+  rust:       { language:'rust',       version:'1.50.0'  }
+};
+
+function setOutput(text, type) {
+  var el  = document.getElementById('output-text');
+  var clr = { error:'#f87171', info:'#facc15', success:'#4ade80' }[type] || '#9ca3af';
+  el.style.color   = clr;
+  el.textContent   = text;
+  /* Show output panel if hidden */
+  document.getElementById('output-body').style.display = 'block';
+  document.getElementById('output-arrow').textContent  = '▼';
+}
+
+async function runCode() {
+  var pInfo = PISTON_MAP[currentLang];
+  if (!pInfo) {
+    setOutput('Code execution not available for this language in the browser.\nUse a local environment for SQL / other languages.', 'info');
+    return;
+  }
+  var btn       = document.getElementById('run-btn');
+  btn.textContent = '⏳ Running…';
+  btn.disabled    = true;
+  setOutput('Running…', 'info');
+  try {
+    var res  = await fetch('https://emkc.org/api/v2/piston/execute', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        language: pInfo.language,
+        version:  pInfo.version,
+        files:    [{ content: editor.getValue() }]
+      })
+    });
+    var data = await res.json();
+    var out  = ((data.run && (data.run.output || data.run.stderr)) || '(no output)').trim();
+    var err  = data.run && (data.run.code !== 0 || data.run.stderr);
+    setOutput(out, err ? 'error' : 'success');
+  } catch(e) {
+    setOutput('Could not reach the code runner.\nCheck your internet connection and try again.', 'error');
+  } finally {
+    btn.textContent = '▶ Run';
+    btn.disabled    = false;
+  }
+}
+
+/* ── Timer ── */
+(function() {
+  var startMs = OPENED_AT_ISO ? new Date(OPENED_AT_ISO).getTime() : Date.now();
+  function pad(n) { return String(n).padStart(2,'0'); }
+  function tick() {
+    var elapsed = Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+    var h = Math.floor(elapsed / 3600);
+    var m = Math.floor((elapsed % 3600) / 60);
+    var s = elapsed % 60;
+    document.getElementById('timer').textContent =
+      h > 0 ? pad(h)+':'+pad(m)+':'+pad(s) : pad(m)+':'+pad(s);
+  }
+  tick(); setInterval(tick, 1000);
+})();
+
+/* ── Recruiter notes auto-save ── */
+{% if role == 'recruiter' %}
+(function() {
+  var ta    = document.getElementById('recruiter-notes');
+  var label = document.getElementById('notes-saved-label');
+  var t     = null;
+  if (!ta) return;
+  ta.addEventListener('input', function() {
+    clearTimeout(t);
+    t = setTimeout(function() {
+      apiPost({ notes: ta.value });
+      label.textContent = 'Saved ✓';
+      label.style.color = '#4ade80';
+      setTimeout(function() { label.textContent = 'auto-saves'; label.style.color = ''; }, 2000);
+    }, 1000);
+  });
+})();
+{% endif %}
+
+/* ── Toggle collapsible panels ── */
+function togglePanel(bodyId, arrowId) {
+  var body  = document.getElementById(bodyId);
+  var arrow = document.getElementById(arrowId);
+  if (!body) return;
+  var hidden = body.classList.contains('hidden') || body.style.display === 'none';
+  if (hidden) {
+    body.classList.remove('hidden');
+    body.style.display = '';
+    if (arrow) arrow.textContent = '▼';
+  } else {
+    body.classList.add('hidden');
+    if (arrow) arrow.textContent = '▶';
+  }
+}
+
+/* ── Jitsi Video Call ── */
+var jitsiLoaded = false;
+function initJitsi() {
+  if (jitsiLoaded || typeof JitsiMeetExternalAPI === 'undefined') {
+    if (typeof JitsiMeetExternalAPI === 'undefined') setTimeout(initJitsi, 600);
+    return;
+  }
+  jitsiLoaded = true;
+  var placeholder = document.getElementById('jitsi-placeholder');
+  if (placeholder) placeholder.style.display = 'none';
+
+  var roomName = 'optihire-room-' + APPLICATION_ID.replace(/[^a-zA-Z0-9]/g,'');
+  try {
+    new JitsiMeetExternalAPI('meet.jit.si', {
+      roomName:    roomName,
+      width:       '100%',
+      height:      '100%',
+      parentNode:  document.getElementById('jitsi-container'),
+      configOverwrite: {
+        prejoinPageEnabled:    false,
+        disableDeepLinking:    true,
+        startWithAudioMuted:   false,
+        startWithVideoMuted:   false,
+        toolbarButtons: ['microphone','camera','hangup','chat','tileview','fullscreen'],
+        hideConferenceSubject: true,
+        disableInviteFunctions: true,
+      },
+      interfaceConfigOverwrite: {
+        SHOW_JITSI_WATERMARK:     false,
+        SHOW_BRAND_WATERMARK:     false,
+        SHOW_POWERED_BY:          false,
+        DEFAULT_BACKGROUND:       '#0d1117',
+        MOBILE_APP_PROMO:         false,
+        TOOLBAR_ALWAYS_VISIBLE:   true,
+      },
+      userInfo: { displayName: DISPLAY_NAME }
+    });
+  } catch(e) {
+    var c = document.getElementById('jitsi-container');
+    c.innerHTML = '<div class="flex flex-col items-center justify-center h-full p-4 text-center">' +
+      '<p class="text-red-400 text-sm mb-2">⚠ Video blocked by browser</p>' +
+      '<p class="text-gray-600 text-xs">Try opening the room in a different browser, or</p>' +
+      '<a href="https://meet.jit.si/' + roomName + '" target="_blank" ' +
+         'class="mt-2 text-purple-400 underline text-xs">Open video in new tab →</a>' +
+      '</div>';
+  }
+}
+if (!ROOM_ENDED_INIT) {
+  window.addEventListener('load', function() { setTimeout(initJitsi, 800); });
+} else {
+  var c = document.getElementById('jitsi-container');
+  if (c) c.innerHTML = '<div class="flex items-center justify-center h-full text-gray-600 text-sm">Session ended</div>';
+}
+</script>
+</body>
+</html>

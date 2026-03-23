@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Choose Your Interview Slot — OptiHire{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center py-16 px-4">
+    <div class="w-full max-w-lg">
+
+        <!-- Brand / Header -->
+        <div class="text-center mb-8">
+            <div class="text-5xl mb-3">📅</div>
+            <h1 class="text-3xl font-extrabold text-gray-900">Choose Your Interview Slot</h1>
+            {% if job %}
+            <p class="text-gray-500 mt-2">
+                <span class="font-semibold text-indigo-600">{{ job.title }}</span>
+                {% if job.company %} · {{ job.company }}{% endif %}
+            </p>
+            {% endif %}
+        </div>
+
+        {% if no_slots %}
+        <!-- No slots configured -->
+        <div class="bg-white rounded-2xl shadow border border-orange-100 p-8 text-center">
+            <div class="text-5xl mb-4">⚠️</div>
+            <h2 class="text-xl font-bold text-gray-800 mb-2">No Slots Available Yet</h2>
+            <p class="text-gray-500">The recruiter hasn't added interview slots for this position yet. Please check your email for further instructions or reply to the recruiter directly.</p>
+        </div>
+
+        {% else %}
+
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <!-- Intro -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6 text-white">
+                <p class="text-indigo-100 text-sm">Congratulations on being shortlisted!</p>
+                <p class="font-semibold mt-1">Please select the slot that works best for you. Your choice will be confirmed immediately.</p>
+            </div>
+
+            <div class="p-8">
+                {% if error %}
+                <div class="mb-5 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm font-medium">
+                    ⚠️ {{ error }}
+                </div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('interviews.choose_slot', application_id=application_id) }}?token={{ token }}">
+                    <p class="text-sm font-bold text-gray-700 mb-4">Available Interview Slots</p>
+
+                    <div class="space-y-3 mb-8" id="slot-options">
+                        {% for slot in slots %}
+                        <label class="slot-card flex items-center gap-4 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-all has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50"
+                               onclick="selectSlot(this)">
+                            <input type="radio" name="slot" value="{{ slot }}" class="w-5 h-5 accent-indigo-600 flex-shrink-0" required>
+                            <div class="flex-1">
+                                <p class="font-semibold text-gray-800">{{ slot }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Click to select this slot</p>
+                            </div>
+                            <div class="slot-check hidden text-indigo-600 text-xl flex-shrink-0">✓</div>
+                        </label>
+                        {% endfor %}
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-6 text-sm text-blue-700">
+                        <strong>Note:</strong> Once you confirm your slot, you will receive a confirmation email. The recruiter will share joining details closer to the interview date.
+                    </div>
+
+                    <button type="submit" id="confirm-btn"
+                            class="w-full px-6 py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-base hover:bg-indigo-700 transition shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                            disabled>
+                        ✅ Confirm My Interview Slot
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <p class="text-center text-xs text-gray-400 mt-6">
+            Powered by <strong class="text-indigo-500">OptiHire</strong> · AI-Powered Recruitment Platform
+        </p>
+    </div>
+</div>
+
+<script>
+function selectSlot(labelEl) {
+    // Highlight only the selected card
+    document.querySelectorAll('.slot-card').forEach(el => {
+        el.classList.remove('border-indigo-500', 'bg-indigo-50');
+        const check = el.querySelector('.slot-check');
+        if (check) check.classList.add('hidden');
+    });
+    labelEl.classList.add('border-indigo-500', 'bg-indigo-50');
+    const check = labelEl.querySelector('.slot-check');
+    if (check) check.classList.remove('hidden');
+    document.getElementById('confirm-btn').disabled = false;
+}
+
+// Re-enable button on form submit (shows loading state)
+document.querySelector('form')?.addEventListener('submit', function() {
+    const btn = document.getElementById('confirm-btn');
+    btn.textContent = '⏳ Confirming…';
+    btn.disabled = true;
+});
+</script>
+{% endblock %}

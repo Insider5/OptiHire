@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Server Error — OptiHire{% endblock %}
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 px-4">
+    <div class="text-center max-w-lg">
+
+        <!-- Illustration -->
+        <div class="relative inline-block mb-8">
+            <div class="w-40 h-40 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center mx-auto shadow-2xl">
+                <span class="text-7xl font-black text-white select-none">500</span>
+            </div>
+            <div class="absolute -top-2 -right-2 w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg text-xl">
+                ⚙️
+            </div>
+        </div>
+
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-3">Something Went Wrong</h1>
+        <p class="text-gray-500 text-lg mb-2 leading-relaxed">
+            Our server ran into an unexpected error.
+        </p>
+        <p class="text-gray-400 text-sm mb-8">
+            Don't worry — it's not your fault. Our team has been notified and is looking into it.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <a href="{{ url_for('main.index') }}"
+               class="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-semibold hover:opacity-90 transition shadow-lg">
+                🏠 Go Home
+            </a>
+            <button onclick="window.history.back()"
+               class="px-6 py-3 bg-white text-gray-700 border-2 border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition">
+                ← Go Back
+            </button>
+        </div>
+
+        <p class="text-xs text-gray-400 mt-8">Error 500 · OptiHire AI-Powered Recruitment</p>
+    </div>
+</div>
+{% endblock %}

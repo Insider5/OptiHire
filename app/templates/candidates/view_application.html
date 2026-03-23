@@ -1,0 +1,634 @@
+{% extends "base.html" %}
+{% block title %}Application Details — OptiHire{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-10">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <a href="{{ url_for('candidates.my_applications') if current_user.user_type == 'candidate' else url_for('dashboard.recruiter_dashboard') }}"
+               class="text-sm text-gray-500 hover:text-primary-600 font-medium mb-2 inline-block">← Back</a>
+            <h1 class="text-3xl font-bold text-gray-900">
+                {{ application.job.title if application.job else 'Job Application' }}
+            </h1>
+            {% if application.job %}
+            <p class="text-gray-500 mt-1">{{ application.job.company }} {% if application.job.location %}· {{ application.job.location }}{% endif %}</p>
+            {% endif %}
+        </div>
+        <!-- Status Badge -->
+        <span class="px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wide
+            {% if application.status == 'hired' %}bg-green-100 text-green-700 border border-green-200
+            {% elif application.status == 'shortlisted' %}bg-blue-100 text-blue-700 border border-blue-200
+            {% elif application.status == 'interview' %}bg-purple-100 text-purple-700 border border-purple-200
+            {% elif application.status == 'rejected' %}bg-red-100 text-red-600 border border-red-200
+            {% else %}bg-yellow-100 text-yellow-700 border border-yellow-200{% endif %}">
+            {% if application.status == 'hired' %}🎉 Hired
+            {% elif application.status == 'shortlisted' %}⭐ Shortlisted
+            {% elif application.status == 'interview' %}📞 Interview
+            {% elif application.status == 'rejected' %}❌ Not Selected
+            {% else %}⏳ Pending{% endif %}
+        </span>
+    </div>
+
+    <!-- ── AI Match Score Hero ──────────────────────────────────── -->
+    {% set score_pct = ((application.similarity_score or 0) * 100) | round | int %}
+    <div class="bg-gradient-to-br from-primary-600 to-purple-700 rounded-2xl p-8 text-white mb-6 shadow-lg">
+        <div class="flex flex-col md:flex-row items-center gap-8">
+            <!-- Circular score -->
+            <div class="relative w-36 h-36 flex-shrink-0">
+                <svg viewBox="0 0 100 100" class="w-full h-full -rotate-90">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="10"/>
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="white" stroke-width="10"
+                            stroke-dasharray="{{ (score_pct * 2.639) | round(1) }} 264"
+                            stroke-linecap="round"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center rotate-0 flex-col">
+                    <span class="text-3xl font-black">{{ score_pct }}%</span>
+                    <span class="text-xs opacity-80 font-medium">Match</span>
+                </div>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold mb-2">AI Match Score</h2>
+                <p class="text-blue-100 leading-relaxed">
+                    {% if score_pct >= 75 %}
+                    🟢 Strong match! Your profile aligns very well with this role.
+                    {% elif score_pct >= 50 %}
+                    🟡 Good match. Some skill gaps exist but you are a solid candidate.
+                    {% else %}
+                    🔴 Partial match. Consider upskilling in the missing areas before reapplying.
+                    {% endif %}
+                </p>
+                <p class="text-xs text-blue-200 mt-2">Computed using Sentence-BERT (all-MiniLM-L6-v2) + Cosine Similarity</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── XAI Score Breakdown ─────────────────────────────────── -->
+    {% set bd = application.match_breakdown or {} %}
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-6">📊 Score Breakdown (Explainable AI)</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center mb-8">
+            <!-- Radar Chart -->
+            <div class="flex items-center justify-center">
+                <canvas id="xaiRadar" width="280" height="280"></canvas>
+            </div>
+            <!-- Component Bars -->
+            <div class="space-y-5">
+                {% set components = [
+                    ('Skills Match', bd.skills_match or 0, '🛠️'),
+                    ('Experience Match', bd.experience_match or 0, '📅'),
+                    ('Education Match', bd.education_match or 0, '🎓')
+                ] %}
+                {% for label, val, icon in components %}
+                {% set pct = (val * 100) | round | int %}
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-sm font-semibold text-gray-700">{{ icon }} {{ label }}</span>
+                        <span class="text-sm font-bold {{ 'text-green-600' if pct >= 75 else 'text-yellow-600' if pct >= 50 else 'text-red-500' }}">{{ pct }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-3">
+                        <div class="h-3 rounded-full transition-all duration-700
+                            {{ 'bg-green-500' if pct >= 75 else 'bg-yellow-400' if pct >= 50 else 'bg-red-400' }}"
+                             style="width: {{ pct }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Matched / Missing Skills -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <h3 class="font-semibold text-gray-800 mb-3">✅ Matched Skills</h3>
+                {% if bd.matched_skills %}
+                <div class="flex flex-wrap gap-2">
+                    {% for skill in bd.matched_skills %}
+                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium border border-green-200">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-400 text-sm">No skills matched.</p>
+                {% endif %}
+            </div>
+            <div>
+                <h3 class="font-semibold text-gray-800 mb-3">❌ Missing Skills</h3>
+                {% if bd.missing_skills %}
+                <div class="flex flex-wrap gap-2">
+                    {% for skill in bd.missing_skills %}
+                    <span class="px-3 py-1 bg-red-100 text-red-600 rounded-full text-sm font-medium border border-red-200">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-400 text-sm">No skill gaps found!</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recommended Courses for Missing Skills -->
+        {% if bd.missing_skills %}
+        {% set course_map = {
+            'python': ('Python for Everybody', 'https://www.coursera.org/specializations/python', 'Coursera'),
+            'machine learning': ('Machine Learning Specialization', 'https://www.coursera.org/specializations/machine-learning-introduction', 'Coursera'),
+            'deep learning': ('Deep Learning Specialization', 'https://www.coursera.org/specializations/deep-learning', 'Coursera'),
+            'tensorflow': ('TensorFlow Developer Certificate', 'https://www.coursera.org/professional-certificates/tensorflow-in-practice', 'Coursera'),
+            'pytorch': ('PyTorch for Deep Learning', 'https://www.udemy.com/course/pytorch-for-deep-learning/', 'Udemy'),
+            'docker': ('Docker Mastery', 'https://www.udemy.com/course/docker-mastery/', 'Udemy'),
+            'kubernetes': ('Kubernetes Certified App Developer', 'https://www.udemy.com/course/certified-kubernetes-application-developer/', 'Udemy'),
+            'react': ('React - The Complete Guide', 'https://www.udemy.com/course/react-the-complete-guide-incl-redux/', 'Udemy'),
+            'node.js': ('Node.js Developer Course', 'https://www.udemy.com/course/the-complete-nodejs-developer-course-2/', 'Udemy'),
+            'sql': ('SQL for Data Science', 'https://www.coursera.org/learn/sql-for-data-science', 'Coursera'),
+            'aws': ('AWS Cloud Practitioner', 'https://www.coursera.org/specializations/aws-fundamentals', 'Coursera'),
+            'git': ('Version Control with Git', 'https://www.coursera.org/learn/version-control-with-git', 'Coursera'),
+            'java': ('Java Programming Masterclass', 'https://www.udemy.com/course/java-the-complete-java-developer-course/', 'Udemy'),
+            'spring': ('Spring Framework Masterclass', 'https://www.udemy.com/course/spring-framework-5-beginner-to-guru/', 'Udemy'),
+            'data analysis': ('Data Analysis with Python', 'https://www.coursera.org/specializations/ibm-data-science', 'Coursera'),
+            'nlp': ('Natural Language Processing Specialization', 'https://www.coursera.org/specializations/natural-language-processing', 'Coursera')
+        } %}
+        <div class="mt-4">
+            <h3 class="font-semibold text-gray-800 mb-3">🎓 Recommended Courses to Close Your Gaps</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {% set shown = [] %}
+                {% for skill in bd.missing_skills[:6] %}
+                {% set skill_lower = skill | lower %}
+                {% for key, course_info in course_map.items() %}
+                {% if key in skill_lower and shown|length < 4 %}
+                {% if key not in shown %}
+                {% set _ = shown.append(key) %}
+                <a href="{{ course_info[1] }}" target="_blank" rel="noopener"
+                   class="flex items-start gap-3 p-3 rounded-xl border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition group">
+                    <div class="w-9 h-9 rounded-lg bg-indigo-100 group-hover:bg-primary-100 flex items-center justify-center flex-shrink-0 text-lg">📚</div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-gray-900 truncate">{{ course_info[0] }}</p>
+                        <p class="text-xs text-gray-500">{{ course_info[2] }} · for <span class="font-medium text-indigo-600">{{ skill }}</span></p>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-primary-600 ml-auto flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                </a>
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recommendations -->
+        {% if bd.recommendations %}
+        <div class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <h3 class="font-semibold text-amber-800 mb-2">💡 AI Recommendations</h3>
+            <ul class="space-y-1.5">
+                {% for rec in bd.recommendations %}
+                <li class="text-sm text-amber-700 flex items-start gap-2"><span>→</span><span>{{ rec }}</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Radar Chart Script -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+    (function() {
+        var ctx = document.getElementById('xaiRadar');
+        if (!ctx) return;
+        var skillsPct = Math.round({{ (bd.skills_match or 0) * 100 }});
+        var expPct    = Math.round({{ (bd.experience_match or 0) * 100 }});
+        var eduPct    = Math.round({{ (bd.education_match or 0) * 100 }});
+        var overallPct = Math.round({{ ((application.similarity_score or 0) * 100) }});
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Skills', 'Experience', 'Education', 'Overall'],
+                datasets: [{
+                    label: 'Your Match',
+                    data: [skillsPct, expPct, eduPct, overallPct],
+                    backgroundColor: 'rgba(79,70,229,0.15)',
+                    borderColor: 'rgba(79,70,229,0.85)',
+                    pointBackgroundColor: 'rgba(79,70,229,1)',
+                    borderWidth: 2,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: false,
+                scales: {
+                    r: {
+                        min: 0, max: 100,
+                        ticks: { stepSize: 25, font: { size: 10 } },
+                        pointLabels: { font: { size: 12, weight: '600' } },
+                        grid: { color: 'rgba(0,0,0,0.06)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    })();
+    </script>
+
+    <!-- ── AI Interview Questions ──────────────────────────────── -->
+    {% if application.interview_questions %}
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-5">🤖 AI-Generated Interview Questions</h2>
+        <div class="space-y-4">
+            {% for q in application.interview_questions %}
+            {% set qdata = q if q is mapping else {} %}
+            <div class="flex gap-4 p-4 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50 transition-colors">
+                <div class="flex-shrink-0 w-8 h-8 gradient-primary rounded-lg flex items-center justify-center text-white font-bold text-sm">{{ loop.index }}</div>
+                <div class="flex-1">
+                    <p class="text-gray-800 font-medium leading-relaxed">{{ qdata.get('question', q) }}</p>
+                    <div class="flex gap-2 mt-2">
+                        {% if qdata.get('type') %}
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{{ qdata.type }}</span>
+                        {% endif %}
+                        {% if qdata.get('difficulty') %}
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium
+                            {% if qdata.difficulty == 'easy' %}bg-green-100 text-green-700
+                            {% elif qdata.difficulty == 'hard' %}bg-red-100 text-red-700
+                            {% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                            {{ qdata.difficulty | capitalize }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Interview Slot Status (status=interview, both roles) ───── -->
+    {% if application.status == 'interview' %}
+
+    {# Candidate confirmed a slot #}
+    {% if application.get('chosen_slot') %}
+    <div class="bg-green-50 border border-green-200 rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div class="text-3xl">✅</div>
+        <div class="flex-1">
+            <p class="font-bold text-green-800 text-lg">Interview Confirmed</p>
+            <p class="text-green-700 font-semibold mt-0.5">{{ application.chosen_slot }}</p>
+            {% if application.get('interview_duration') %}
+            <p class="text-green-600 text-sm mt-0.5">Duration: {{ application.interview_duration }} minutes</p>
+            {% endif %}
+            {% if application.get('interview_notes') %}
+            <p class="text-green-600 text-sm mt-1 italic">{{ application.interview_notes }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ── Interview Room Entry ── #}
+    {% if not application.get('room_ended_at') %}
+    <div class="rounded-2xl p-5 mb-6" style="background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(79,70,229,.05));border:1px solid rgba(124,58,237,.2)">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <p class="font-bold text-lg" style="color:#7c3aed">🎥 Interview Room Ready</p>
+                <p class="text-sm text-gray-500 mt-0.5">Both you and the interviewer can join the live room for the video call and coding session.</p>
+            </div>
+            <a href="{{ url_for('interview_room.room', application_id=application.id) }}"
+               class="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white text-sm transition hover:opacity-90 shadow"
+               style="background:linear-gradient(135deg,#F042FF,#7226FF)">
+                🎥 Enter Interview Room →
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <div class="rounded-2xl p-5 mb-6" style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2)">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <p class="font-bold text-lg text-green-700 dark:text-green-400">✅ Interview Completed</p>
+                {% if application.get('interview_overall_score') %}
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+                    Rating:
+                    {% for i in range(application.interview_overall_score) %}⭐{% endfor %}
+                    ({{ application.interview_overall_score }}/5)
+                </p>
+                {% endif %}
+                {% if application.get('interview_final_feedback') %}
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 italic">"{{ application.interview_final_feedback[:200] }}{% if application.interview_final_feedback|length > 200 %}…{% endif %}"</p>
+                {% endif %}
+            </div>
+            {% if current_user.user_type == 'recruiter' %}
+            <div class="flex gap-2 flex-shrink-0">
+                <a href="{{ url_for('interview_room.room', application_id=application.id) }}"
+                   class="px-4 py-2 rounded-xl text-sm font-semibold transition"
+                   style="background:rgba(124,58,237,.12);color:#7c3aed;border:1px solid rgba(124,58,237,.25)">
+                    View Room
+                </a>
+                <a href="{{ url_for('interview_room.feedback', application_id=application.id) }}"
+                   class="px-4 py-2 rounded-xl text-sm font-semibold text-white transition hover:opacity-90"
+                   style="background:linear-gradient(135deg,#F042FF,#7226FF)">
+                    📝 {{ 'Edit' if application.get('interview_overall_score') else 'Submit' }} Feedback
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# Slots sent — awaiting candidate's choice #}
+    {% elif application.get('interview_slots') %}
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div class="text-3xl">⏳</div>
+            <div class="flex-1">
+                <p class="font-bold text-amber-800 text-lg">Awaiting Candidate's Slot Choice</p>
+                <p class="text-amber-700 text-sm mt-0.5">{{ application.interview_slots | length }} option(s) sent to the candidate's email.</p>
+            </div>
+            {% if current_user.user_type == 'recruiter' %}
+            <button onclick="openScheduleModal()"
+                    class="flex-shrink-0 px-4 py-2 bg-amber-600 text-white rounded-xl text-sm font-semibold hover:bg-amber-700 transition">
+                ✏️ Update Slots
+            </button>
+            {% endif %}
+        </div>
+        <div class="mt-4 flex flex-wrap gap-2">
+            {% for slot in application.interview_slots %}
+            <span class="px-3 py-1.5 bg-amber-100 border border-amber-300 text-amber-800 rounded-full text-sm font-medium">📅 {{ slot }}</span>
+            {% endfor %}
+        </div>
+        {% if current_user.user_type == 'candidate' %}
+        <div class="mt-4">
+            <a href="{{ url_for('interviews.choose_slot', application_id=application.id) }}?token={{ application.get('slot_token', '') }}"
+               class="inline-block px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition">
+                📅 Choose My Interview Slot →
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {# Recruiter action card — send or resend slots (only if not yet confirmed) #}
+    {% if current_user.user_type == 'recruiter' and not application.get('chosen_slot') %}
+    <div class="bg-white rounded-2xl shadow border border-purple-100 p-6 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">📅 Send Interview Slots to Candidate</h2>
+                <p class="text-sm text-gray-400 mt-1">Offer the candidate a set of available times — they'll choose the slot that suits them best.</p>
+            </div>
+            <button onclick="openScheduleModal()"
+                    class="flex-shrink-0 px-5 py-2.5 bg-purple-600 text-white rounded-xl font-semibold text-sm hover:bg-purple-700 transition shadow-sm">
+                {% if application.get('interview_slots') %}✏️ Update Slots{% else %}📅 Send Slot Options{% endif %}
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}{# end status == interview #}
+
+    {# Slot-picker modal — recruiter only, shown until candidate confirms #}
+    {% if current_user.user_type == 'recruiter' and application.status == 'interview' and not application.get('chosen_slot') %}
+    <div id="schedule-interview-modal"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden"
+         onclick="if(event.target===this) closeScheduleModal()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 overflow-hidden" onclick="event.stopPropagation()">
+
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-8 py-6 text-white flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-xl font-bold">📅 Send Interview Slots</h3>
+                    <p class="text-purple-200 text-sm mt-1">
+                        Add up to 3 time options for
+                        <strong>{{ application.candidate.full_name if application.candidate else 'the candidate' }}</strong>.
+                        They will pick the one that works best.
+                    </p>
+                </div>
+                <button onclick="closeScheduleModal()" class="text-white/70 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+
+            <div class="p-8">
+                <form id="schedule-interview-form" method="POST"
+                      action="{{ url_for('dashboard.schedule_interview', application_id=application.id) }}">
+
+                    <p class="text-sm font-bold text-gray-700 mb-3">
+                        Available Slots <span class="text-red-500">*</span>
+                        <span class="text-gray-400 font-normal ml-1">(at least one required)</span>
+                    </p>
+
+                    <div class="space-y-3 mb-5">
+                        {% for i in range(1, 4) %}
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">
+                                    Slot {{ i }} — Date{% if i == 1 %} <span class="text-red-500">*</span>{% endif %}
+                                </label>
+                                <input type="date" name="slot_{{ i }}_date"
+                                       {% if i == 1 %}required{% endif %}
+                                       min="{{ now_date }}"
+                                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-300 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">
+                                    Slot {{ i }} — Time (IST){% if i == 1 %} <span class="text-red-500">*</span>{% endif %}
+                                </label>
+                                <input type="time" name="slot_{{ i }}_time"
+                                       {% if i == 1 %}required{% endif %}
+                                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-300 outline-none">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">⏱️ Duration per slot</label>
+                        <select name="duration"
+                                class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-300 outline-none">
+                            <option value="30">30 minutes</option>
+                            <option value="45">45 minutes</option>
+                            <option value="60" selected>60 minutes</option>
+                            <option value="90">90 minutes</option>
+                            <option value="120">2 hours</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">📝 Notes / Agenda <span class="text-gray-400 font-normal">(optional)</span></label>
+                        <textarea name="notes" rows="2"
+                                  placeholder="e.g. Round 1 — Technical Interview. Please bring your portfolio."
+                                  class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-300 outline-none resize-none">{{ application.get('interview_notes', '') }}</textarea>
+                    </div>
+
+                    <div class="text-sm text-purple-700 bg-purple-50 rounded-xl px-4 py-3 mb-6">
+                        <strong>What happens:</strong> The candidate receives an email with these options and a secure link to choose their preferred time. You'll get an in-app notification once they confirm.
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeScheduleModal()"
+                                class="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" id="schedule-submit-btn"
+                                class="flex-1 px-4 py-2.5 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition">
+                            📅 Send to Candidate
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function openScheduleModal() {
+        const today = new Date().toISOString().split('T')[0];
+        const defaultTimes = ['10:00', '14:00', '16:00'];
+        document.querySelectorAll('[name^="slot_"][name$="_date"]').forEach(el => {
+            el.min = today;
+            if (!el.value) el.value = today;
+        });
+        document.querySelectorAll('[name^="slot_"][name$="_time"]').forEach((el, i) => {
+            if (!el.value) el.value = defaultTimes[i] || '10:00';
+        });
+        document.getElementById('schedule-interview-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeScheduleModal() {
+        document.getElementById('schedule-interview-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeScheduleModal(); });
+    document.getElementById('schedule-interview-form')?.addEventListener('submit', function() {
+        const btn = document.getElementById('schedule-submit-btn');
+        btn.textContent = '⏳ Sending…';
+        btn.disabled = true;
+    });
+    </script>
+    {% endif %}
+
+    <!-- ── Status Update (recruiters only) ──────────────────────── -->
+    {% if current_user.user_type == 'recruiter' %}
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-1">Update Application Status</h2>
+        <p class="text-sm text-gray-400 mb-4">Changing status will send an email &amp; in-app notification to the candidate.</p>
+        <!-- Hidden form — submitted by the confirmation modal -->
+        <form id="status-update-form" method="POST" action="{{ url_for('dashboard.update_application_status', application_id=application.id) }}">
+            <input type="hidden" name="status" id="status-update-value">
+        </form>
+        <div class="flex flex-wrap items-center gap-3">
+            {% set status_icons = {'pending': '⏳', 'shortlisted': '⭐', 'interview': '📞', 'hired': '🎉', 'rejected': '❌'} %}
+            {% for status_opt in ['pending', 'shortlisted', 'interview', 'hired', 'rejected'] %}
+            <button type="button"
+                    onclick="openStatusModal('{{ status_opt }}', '{{ status_icons[status_opt] }}', '{{ application.candidate.full_name if application.candidate else 'the candidate' }}', '{{ (application.job.title if application.job else 'this position') | replace("'", "\\'") }}')"
+                    class="px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-all
+                {% if application.status == status_opt %}
+                    {% if status_opt == 'hired' %}bg-green-500 text-white border-green-500
+                    {% elif status_opt == 'shortlisted' %}bg-blue-500 text-white border-blue-500
+                    {% elif status_opt == 'interview' %}bg-purple-500 text-white border-purple-500
+                    {% elif status_opt == 'rejected' %}bg-red-500 text-white border-red-500
+                    {% else %}bg-yellow-500 text-white border-yellow-500{% endif %}
+                {% else %}border-gray-200 text-gray-600 hover:border-primary-300 hover:bg-gray-50{% endif %}">
+                {{ status_icons[status_opt] }} {{ status_opt | capitalize }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ── Status Confirmation Modal ──────────────────────────── -->
+    <div id="status-confirm-modal"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden"
+         onclick="if(event.target===this) closeStatusModal()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8 relative" onclick="event.stopPropagation()">
+            <!-- Close X -->
+            <button onclick="closeStatusModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+
+            <!-- Icon + heading -->
+            <div class="text-center mb-6">
+                <div id="modal-status-icon" class="text-5xl mb-3"></div>
+                <h3 class="text-xl font-bold text-gray-900">Confirm Status Change</h3>
+            </div>
+
+            <!-- Details -->
+            <div class="bg-gray-50 rounded-xl p-4 mb-5 space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-500 font-medium">Candidate</span>
+                    <span id="modal-candidate-name" class="font-semibold text-gray-800"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500 font-medium">Job</span>
+                    <span id="modal-job-title" class="font-semibold text-gray-800 text-right max-w-[55%]"></span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500 font-medium">New Status</span>
+                    <span id="modal-status-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border"></span>
+                </div>
+            </div>
+
+            <!-- Warning -->
+            <p class="text-center text-sm text-blue-600 bg-blue-50 rounded-lg py-2 px-3 mb-6">
+                ⚡ This will instantly send an <strong>email</strong> &amp; <strong>in-app notification</strong> to the candidate.
+            </p>
+
+            <!-- Buttons -->
+            <div class="flex gap-3">
+                <button onclick="closeStatusModal()"
+                        class="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition">
+                    Cancel
+                </button>
+                <button id="modal-confirm-btn" onclick="submitStatusChange()"
+                        class="flex-1 px-4 py-2.5 rounded-xl text-white font-semibold transition">
+                    ✓ Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const STATUS_STYLES = {
+        pending:     { badge: 'bg-yellow-100 text-yellow-800 border-yellow-300', btn: 'bg-yellow-500 hover:bg-yellow-600' },
+        shortlisted: { badge: 'bg-blue-100   text-blue-800   border-blue-300',   btn: 'bg-blue-500   hover:bg-blue-600' },
+        interview:   { badge: 'bg-purple-100 text-purple-800 border-purple-300', btn: 'bg-purple-500 hover:bg-purple-600' },
+        hired:       { badge: 'bg-green-100  text-green-800  border-green-300',  btn: 'bg-green-500  hover:bg-green-600' },
+        rejected:    { badge: 'bg-red-100    text-red-800    border-red-300',    btn: 'bg-red-500    hover:bg-red-600' }
+    };
+
+    function openStatusModal(status, icon, candidateName, jobTitle) {
+        const styles = STATUS_STYLES[status] || STATUS_STYLES['pending'];
+
+        document.getElementById('modal-status-icon').textContent    = icon;
+        document.getElementById('modal-candidate-name').textContent = candidateName;
+        document.getElementById('modal-job-title').textContent      = jobTitle;
+        document.getElementById('status-update-value').value        = status;
+
+        const badge = document.getElementById('modal-status-badge');
+        badge.textContent  = status.charAt(0).toUpperCase() + status.slice(1);
+        badge.className    = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ' + styles.badge;
+
+        const confirmBtn = document.getElementById('modal-confirm-btn');
+        confirmBtn.className = 'flex-1 px-4 py-2.5 rounded-xl text-white font-semibold transition ' + styles.btn;
+
+        document.getElementById('status-confirm-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeStatusModal() {
+        document.getElementById('status-confirm-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function submitStatusChange() {
+        document.getElementById('modal-confirm-btn').textContent = 'Sending…';
+        document.getElementById('modal-confirm-btn').disabled = true;
+        document.getElementById('status-update-form').submit();
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeStatusModal();
+    });
+    </script>
+    {% endif %}
+
+    <!-- ── Cover Letter ──────────────────────────────────────────── -->
+    {% if application.cover_letter %}
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-3">Cover Letter</h2>
+        <p class="text-gray-700 leading-relaxed whitespace-pre-line">{{ application.cover_letter }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Applied date -->
+    <p class="text-center text-sm text-gray-400 mt-4">
+        Applied on {{ application.applied_at_obj.strftime('%d %B %Y at %I:%M %p') if application.get('applied_at_obj') else application.get('applied_at', '')[:10] }}
+    </p>
+</div>
+{% endblock %}

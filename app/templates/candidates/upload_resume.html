@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Resume - OptiHire{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-br from-blue-50 via-white to-purple-50 py-16 min-h-screen">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-4">
+                Upload Your <span
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-purple-600">Resume</span>
+            </h1>
+            <p class="text-lg text-gray-600">
+                Our AI will automatically parse your resume and extract key information
+            </p>
+        </div>
+
+        <!-- Upload Form -->
+        <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-12">
+            <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <!-- File Upload Area -->
+                <div
+                    class="border-3 border-dashed border-primary-300 rounded-2xl p-12 text-center bg-primary-50 hover:bg-primary-100 transition-colors">
+                    <div class="mb-6">
+                        <svg class="mx-auto h-20 w-20 text-primary-600" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Drop your resume here or click to browse</h3>
+                    <p class="text-gray-600 mb-6">Supports PDF and DOCX formats (Max 10MB)</p>
+                    <input type="file" name="resume" id="resume" accept=".pdf,.docx" required class="block w-full text-sm text-gray-500
+                            file:mr-4 file:py-3 file:px-6
+                            file:rounded-full file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-primary-600 file:text-white
+                            hover:file:bg-primary-700
+                            file:cursor-pointer cursor-pointer">
+                </div>
+
+                <!-- File Preview -->
+                <div id="file-preview" class="hidden p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <svg class="h-8 w-8 text-green-600 mr-3" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div>
+                                <p class="font-semibold text-gray-900" id="file-name"></p>
+                                <p class="text-sm text-gray-600" id="file-size"></p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="clearFile()" class="text-red-600 hover:text-red-800">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Info Cards -->
+                <div class="grid md:grid-cols-3 gap-4 mt-8">
+                    <div class="bg-blue-50 p-4 rounded-xl text-center">
+                        <svg class="h-8 w-8 text-blue-600 mx-auto mb-2" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        <p class="text-sm font-semibold text-blue-900">AI-Powered</p>
+                        <p class="text-xs text-blue-700">Advanced NER parsing</p>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-xl text-center">
+                        <svg class="h-8 w-8 text-purple-600 mx-auto mb-2" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                            </path>
+                        </svg>
+                        <p class="text-sm font-semibold text-purple-900">Secure</p>
+                        <p class="text-xs text-purple-700">Your data is safe</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-xl text-center">
+                        <svg class="h-8 w-8 text-green-600 mx-auto mb-2" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-sm font-semibold text-green-900">Fast</p>
+                        <p class="text-xs text-green-700">Parsed in seconds</p>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-6">
+                    <button type="submit"
+                        class="w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-primary-700 hover:to-purple-700 hover-lift shadow-lg">
+                        Upload and Parse Resume
+                    </button>
+                </div>
+            </form>
+
+            <!-- What We Extract -->
+            <div class="mt-12 pt-8 border-t border-gray-200">
+                <h3 class="text-xl font-bold text-gray-900 mb-4 text-center">What We Extract</h3>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="flex items-start">
+                        <svg class="h-6 w-6 text-green-600 mr-3 mt-0.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                        <div>
+                            <p class="font-semibold text-gray-900">Skills & Technologies</p>
+                            <p class="text-sm text-gray-600">Programming languages, frameworks, tools</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <svg class="h-6 w-6 text-green-600 mr-3 mt-0.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                        <div>
+                            <p class="font-semibold text-gray-900">Work Experience</p>
+                            <p class="text-sm text-gray-600">Years of experience, roles, companies</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <svg class="h-6 w-6 text-green-600 mr-3 mt-0.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                        <div>
+                            <p class="font-semibold text-gray-900">Education</p>
+                            <p class="text-sm text-gray-600">Degrees, institutions, certifications</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <svg class="h-6 w-6 text-green-600 mr-3 mt-0.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                        <div>
+                            <p class="font-semibold text-gray-900">Contact Information</p>
+                            <p class="text-sm text-gray-600">Email, phone, location</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('resume');
+    const filePreview = document.getElementById('file-preview');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+
+    fileInput.addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (file) {
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            filePreview.classList.remove('hidden');
+        }
+    });
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function clearFile() {
+        fileInput.value = '';
+        filePreview.classList.add('hidden');
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% block title %}Interview Feedback — OptiHire{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-8 px-4">
+
+  <!-- Back link -->
+  <a href="{{ url_for('candidates.view_application', application_id=application.id) }}"
+     class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-6 transition">
+    ← Back to Application
+  </a>
+
+  <!-- Header card -->
+  <div class="rounded-2xl p-6 mb-6"
+       style="background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(79,70,229,.08));border:1px solid rgba(124,58,237,.2)">
+    <div class="flex items-start gap-4">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-lg flex-shrink-0"
+           style="background:linear-gradient(135deg,#F042FF,#7226FF)">
+        {{ (candidate.full_name or 'C')[0].upper() if candidate else 'C' }}
+      </div>
+      <div class="flex-1">
+        <h1 class="text-xl font-bold text-gray-900 dark:text-white">
+          Interview Feedback
+        </h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          {{ candidate.full_name if candidate else 'Candidate' }}
+          &mdash; {{ job.title if job else 'Position' }}
+          {% if job and job.company %}at {{ job.company }}{% endif %}
+        </p>
+      </div>
+      <span class="px-3 py-1 rounded-full text-xs font-semibold"
+            style="background:rgba(124,58,237,.15);color:#7c3aed;border:1px solid rgba(124,58,237,.25)">
+        Recruiter Review
+      </span>
+    </div>
+
+    <!-- Existing interview metadata -->
+    <div class="flex flex-wrap gap-3 mt-4">
+      {% if application.get('chosen_slot') %}
+      <span class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+        📅 {{ application.chosen_slot }}
+      </span>
+      {% endif %}
+      {% if application.get('room_opened_at') %}
+      <span class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+        🕐 Room opened {{ application.room_opened_at[:16] | replace('T',' ') }}
+      </span>
+      {% endif %}
+      {% set score_pct = ((application.similarity_score or 0) * 100) | round | int %}
+      <span class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+        🎯 AI Match: <strong class="text-purple-600 dark:text-purple-400">{{ score_pct }}%</strong>
+      </span>
+    </div>
+  </div>
+
+  <!-- Feedback form -->
+  <form method="POST"
+        action="{{ url_for('interview_room.feedback', application_id=application.id) }}"
+        class="space-y-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+    <!-- Star rating -->
+    <div class="rounded-2xl p-6"
+         style="background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb)">
+      <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">
+        Overall Rating <span class="text-red-500">*</span>
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Rate the candidate's overall performance (1 = Poor, 5 = Excellent)
+      </p>
+
+      <div class="flex items-center gap-2" id="star-row">
+        {% for i in range(1, 6) %}
+        <button type="button" onclick="setRating({{ i }})" id="star-{{ i }}"
+                class="text-3xl transition-transform hover:scale-110 focus:outline-none cursor-pointer select-none"
+                title="{{ i }} star{{ 's' if i > 1 else '' }}">☆</button>
+        {% endfor %}
+        <span id="rating-label" class="ml-3 text-sm text-gray-500 dark:text-gray-400"></span>
+      </div>
+      <input type="hidden" id="overall-score-input" name="overall_score" value=""/>
+    </div>
+
+    <!-- Final feedback textarea -->
+    <div class="rounded-2xl p-6"
+         style="background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb)">
+      <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">
+        Interview Feedback
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Summarise the candidate's performance — strengths, areas to improve, and any key observations.
+      </p>
+      <textarea name="final_feedback" id="final-feedback" rows="6"
+                placeholder="e.g. Strong problem-solving skills, good communication. Struggled with time complexity analysis. Would recommend for senior Python role…"
+                class="w-full rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                style="background:var(--input-bg,#f9fafb);border:1px solid var(--border-color,#e5e7eb);color:var(--text-primary,#111827)">{{ application.get('interview_final_feedback', '') | e }}</textarea>
+      <div class="flex justify-end mt-1">
+        <span id="fb-count" class="text-xs text-gray-400">0 / 2000</span>
+      </div>
+    </div>
+
+    <!-- Recruiter notes preview (read-only) -->
+    {% if application.get('room_recruiter_notes') %}
+    <div class="rounded-2xl p-6"
+         style="background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb)">
+      <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-3">
+        Your In-Room Notes
+      </h2>
+      <pre class="text-xs whitespace-pre-wrap leading-relaxed p-4 rounded-xl"
+           style="background:var(--input-bg,#f9fafb);border:1px solid var(--border-color,#e5e7eb);color:var(--text-secondary,#374151);max-height:160px;overflow:auto">{{ application.room_recruiter_notes | e }}</pre>
+    </div>
+    {% endif %}
+
+    <!-- Hiring Decision -->
+    <div class="rounded-2xl p-6"
+         style="background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb)">
+      <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-4">
+        Hiring Decision <span class="text-red-500">*</span>
+      </h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- Hire -->
+        <label class="decision-card" for="dec-hired" onclick="selectDecision(this)">
+          <input class="sr-only" type="radio" name="decision" value="hired" id="dec-hired"/>
+          <div class="text-2xl mb-2">🎉</div>
+          <div class="font-semibold text-sm">Hire</div>
+          <div class="text-xs text-gray-500 mt-0.5">Move forward with offer</div>
+        </label>
+
+        <!-- Reject -->
+        <label class="decision-card" for="dec-rejected" onclick="selectDecision(this)">
+          <input class="sr-only" type="radio" name="decision" value="rejected" id="dec-rejected"/>
+          <div class="text-2xl mb-2">❌</div>
+          <div class="font-semibold text-sm">Reject</div>
+          <div class="text-xs text-gray-500 mt-0.5">Candidate not selected</div>
+        </label>
+
+        <!-- Pending -->
+        <label class="decision-card selected" for="dec-pending" onclick="selectDecision(this)">
+          <input class="sr-only" type="radio" name="decision" value="pending" id="dec-pending" checked/>
+          <div class="text-2xl mb-2">⏳</div>
+          <div class="font-semibold text-sm">Keep Pending</div>
+          <div class="text-xs text-gray-500 mt-0.5">Decide later</div>
+        </label>
+      </div>
+
+      <p class="text-xs text-gray-400 mt-3">
+        The candidate will be notified immediately when you select Hire or Reject.
+      </p>
+    </div>
+
+    <!-- Submit -->
+    <div class="flex items-center justify-between gap-4">
+      <a href="{{ url_for('interview_room.room', application_id=application.id) }}"
+         class="px-5 py-2.5 rounded-xl text-sm font-semibold transition"
+         style="background:var(--card-bg,#f3f4f6);color:var(--text-secondary,#374151);border:1px solid var(--border-color,#e5e7eb)">
+        ← Back to Room
+      </a>
+      <button type="submit"
+              class="px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90 shadow"
+              style="background:linear-gradient(135deg,#F042FF,#7226FF)">
+        Submit Feedback ✓
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<!-- ── Styles ── -->
+<style>
+  .decision-card {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 16px 12px; border-radius: 12px; cursor: pointer; text-align: center;
+    border: 2px solid var(--border-color, #e5e7eb);
+    background: var(--input-bg, #f9fafb);
+    color: var(--text-primary, #111827);
+    transition: all .15s;
+  }
+  .decision-card:hover  { border-color: #7c3aed; }
+  .decision-card.selected {
+    border-color: #7c3aed;
+    background: rgba(124,58,237,.07);
+    box-shadow: 0 0 0 3px rgba(124,58,237,.12);
+  }
+</style>
+
+<!-- ── Script ── -->
+<script>
+/* Star rating */
+var currentRating = 0;
+var labels = ['','Poor','Below Average','Average','Good','Excellent'];
+function setRating(n) {
+  currentRating = n;
+  document.getElementById('overall-score-input').value = n;
+  document.getElementById('rating-label').textContent = labels[n] || '';
+  for (var i = 1; i <= 5; i++) {
+    document.getElementById('star-' + i).textContent = i <= n ? '★' : '☆';
+    document.getElementById('star-' + i).style.color  = i <= n ? '#f59e0b' : '#9ca3af';
+  }
+}
+
+/* Decision cards */
+function selectDecision(label) {
+  document.querySelectorAll('.decision-card').forEach(function(el) {
+    el.classList.remove('selected');
+  });
+  label.classList.add('selected');
+}
+
+/* Feedback char count */
+(function() {
+  var ta  = document.getElementById('final-feedback');
+  var cnt = document.getElementById('fb-count');
+  function update() { cnt.textContent = ta.value.length + ' / 2000'; }
+  update();
+  ta.addEventListener('input', update);
+})();
+
+/* Pre-fill from existing data */
+(function() {
+  var existingScore = {{ (application.interview_overall_score or 0) | int }};
+  if (existingScore >= 1 && existingScore <= 5) setRating(existingScore);
+
+  var existingDecision = {{ (application.status or 'pending') | tojson }};
+  var radioMap = { hired:'dec-hired', rejected:'dec-rejected', pending:'dec-pending' };
+  var radioId = radioMap[existingDecision] || 'dec-pending';
+  var radioEl = document.getElementById(radioId);
+  if (radioEl) {
+    radioEl.checked = true;
+    selectDecision(radioEl.closest('label'));
+  }
+})();
+</script>
+{% endblock %}

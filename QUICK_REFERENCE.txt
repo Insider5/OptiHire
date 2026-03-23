@@ -1,0 +1,66 @@
+╔══════════════════════════════════════════════════════════════╗
+║           🎯 OptiHire - QUICK REFERENCE CARD                 ║
+╚══════════════════════════════════════════════════════════════╝
+
+🌐 URL: http://localhost:5000
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🔐 LOGIN CREDENTIALS (Copy & Paste Ready)                    │
+└──────────────────────────────────────────────────────────────┘
+
+👔 RECRUITER:
+   Email:    recruiter@example.com
+   Password: password123
+
+👨‍💼 CANDIDATE:
+   Email:    candidate@example.com
+   Password: password123
+
+┌──────────────────────────────────────────────────────────────┐
+│ 📊 DEMO DATA SUMMARY                                         │
+└──────────────────────────────────────────────────────────────┘
+
+✅ 5 Job Postings Created:
+   • Senior Software Engineer - Full Stack ($130k-$180k)
+   • Machine Learning Engineer ($140k-$200k)
+   • Frontend Developer - React ($90k-$130k)
+   • DevOps Engineer ($120k-$160k)
+   • Data Analyst ($75k-$95k)
+
+✅ Multiple User Accounts Ready
+✅ File-Based Storage (No Database)
+✅ AI Features Active (spaCy, BERT, Gemini)
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🎬 30-SECOND DEMO FLOW                                       │
+└──────────────────────────────────────────────────────────────┘
+
+1. Login as RECRUITER → View posted jobs
+2. Login as CANDIDATE → Browse jobs & apply
+3. Show AI match score (0-100%)
+4. Demonstrate resume parsing
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🔑 KEY FEATURES TO MENTION                                   │
+└──────────────────────────────────────────────────────────────┘
+
+✨ No Database Required (JSON file storage)
+✨ AI-Powered Resume Parsing (spaCy NER)
+✨ Semantic Job Matching (Sentence-BERT)
+✨ AI Interview Questions (Google Gemini)
+✨ Explainable AI (Transparent scoring)
+✨ Complete Authentication System
+
+┌──────────────────────────────────────────────────────────────┐
+│ 📁 DATA LOCATION                                             │
+└──────────────────────────────────────────────────────────────┘
+
+C:\Users\meom\OneDrive\Desktop\tax\data\
+  ├── users.json
+  ├── jobs.json
+  ├── resumes.json
+  └── applications.json
+
+═══════════════════════════════════════════════════════════════
+Server Status: ✅ RUNNING on http://localhost:5000
+═══════════════════════════════════════════════════════════════

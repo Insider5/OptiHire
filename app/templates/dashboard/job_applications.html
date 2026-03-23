@@ -1,0 +1,524 @@
+{% extends 'base.html' %}
+
+{% block title %}Applications for {{ job.title }} - OptiHire{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12 min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-6">
+            <a href="{{ url_for('dashboard.recruiter_dashboard') }}"
+                class="text-primary-600 hover:text-primary-700 font-medium mb-3 inline-flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Back to Dashboard
+            </a>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-gray-900">
+                        Applications for <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-purple-600">{{ job.title }}</span>
+                    </h1>
+                    <p class="text-gray-500 mt-1">{{ job.company }} · <span id="visible-count">{{ applications|length }}</span> application(s)</p>
+                </div>
+                {% if applications %}
+                <button type="button" onclick="openAutoShortlistModal()"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition shadow-md">
+                    🤖 Auto-Shortlist Agent
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if applications %}
+        <!-- Filter Bar -->
+        <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 mb-6 flex flex-wrap gap-3 items-center">
+            <span class="text-sm font-semibold text-gray-600 mr-1">Filter:</span>
+            <button onclick="filterApps('all')"
+                class="filter-btn active px-4 py-1.5 rounded-full text-sm font-medium border-2 border-primary-500 bg-primary-50 text-primary-700 transition"
+                data-filter="all">All ({{ applications|length }})</button>
+            <button onclick="filterApps('high')"
+                class="filter-btn px-4 py-1.5 rounded-full text-sm font-medium border-2 border-green-300 text-green-700 hover:bg-green-50 transition"
+                data-filter="high">🟢 High ≥75%</button>
+            <button onclick="filterApps('medium')"
+                class="filter-btn px-4 py-1.5 rounded-full text-sm font-medium border-2 border-yellow-300 text-yellow-700 hover:bg-yellow-50 transition"
+                data-filter="medium">🟡 Medium 50-74%</button>
+            <button onclick="filterApps('low')"
+                class="filter-btn px-4 py-1.5 rounded-full text-sm font-medium border-2 border-red-300 text-red-600 hover:bg-red-50 transition"
+                data-filter="low">🔴 Low &lt;50%</button>
+            <div class="ml-auto flex items-center gap-2">
+                <span class="text-sm text-gray-500">Status:</span>
+                <select onchange="filterByStatus(this.value)" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-primary-300 outline-none">
+                    <option value="all">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="shortlisted">Shortlisted</option>
+                    <option value="interview">Interview</option>
+                    <option value="hired">Hired</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Applications List -->
+        <div class="space-y-4" id="applications-list">
+            {% for app in applications | sort(attribute='similarity_score', reverse=True) %}
+            {% set score_pct = ((app.similarity_score or 0) * 100) | round | int %}
+            {% set row_color = 'border-l-4 border-green-400' if score_pct >= 75 else 'border-l-4 border-yellow-400' if score_pct >= 50 else 'border-l-4 border-red-400' %}
+            <div class="app-card bg-white rounded-2xl shadow hover:shadow-md transition overflow-hidden {{ row_color }}"
+                 data-score="{{ score_pct }}"
+                 data-status="{{ app.status }}">
+                <div class="p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+                        <!-- Candidate Info -->
+                        <div class="flex items-center gap-4 flex-1">
+                            <!-- Avatar -->
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0
+                                {{ 'bg-green-100 text-green-700' if score_pct >= 75 else 'bg-yellow-100 text-yellow-700' if score_pct >= 50 else 'bg-red-100 text-red-600' }}">
+                                {{ (app.candidate.full_name[0] if app.candidate else '?') | upper }}
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-900">{{ app.candidate.full_name if app.candidate else 'Candidate' }}</h2>
+                                <p class="text-sm text-gray-500">{{ app.candidate.email if app.candidate else '' }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Applied {{ app.applied_at[:10] if app.applied_at else 'N/A' }}</p>
+                            </div>
+                        </div>
+                        <!-- Score + Status -->
+                        <div class="flex items-center gap-4 flex-shrink-0">
+                            <!-- Score Badge -->
+                            <div class="text-center">
+                                <div class="text-3xl font-black
+                                    {{ 'text-green-600' if score_pct >= 75 else 'text-yellow-600' if score_pct >= 50 else 'text-red-500' }}">
+                                    {{ score_pct }}%
+                                </div>
+                                <div class="text-xs font-medium text-gray-400">AI Match</div>
+                            </div>
+                            <!-- Status Badge -->
+                            {% set status_colors = {
+                                'pending': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                                'shortlisted': 'bg-blue-100 text-blue-800 border-blue-300',
+                                'interview': 'bg-purple-100 text-purple-800 border-purple-300',
+                                'rejected': 'bg-red-100 text-red-800 border-red-300',
+                                'hired': 'bg-green-100 text-green-800 border-green-300'
+                            } %}
+                            <span class="px-3 py-1.5 rounded-full font-semibold text-xs border-2 uppercase tracking-wide
+                                {{ status_colors.get(app.status, 'bg-gray-100 text-gray-800 border-gray-300') }}">
+                                {{ app.status | title }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Score Bar -->
+                    <div class="mb-4">
+                        <div class="w-full bg-gray-100 rounded-full h-2.5">
+                            <div class="h-2.5 rounded-full transition-all duration-700
+                                {{ 'bg-green-500' if score_pct >= 75 else 'bg-yellow-400' if score_pct >= 50 else 'bg-red-400' }}"
+                                style="width: {{ score_pct }}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Skills Preview -->
+                    {% if app.resume %}
+                    <div class="flex flex-wrap gap-1.5 mb-4">
+                        {% set skills = app.resume.skills %}
+                        {% if skills is string %}
+                          {% set skill_list = skills | from_json if skills else [] %}
+                        {% else %}
+                          {% set skill_list = skills or [] %}
+                        {% endif %}
+                        {% for skill in skill_list[:8] %}
+                        <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">{{ skill }}</span>
+                        {% endfor %}
+                        {% if skill_list|length > 8 %}
+                        <span class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs">+{{ skill_list|length - 8 }} more</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Actions -->
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ url_for('candidates.view_application', application_id=app.id) }}"
+                            class="flex-1 min-w-[140px] bg-gradient-to-r from-primary-600 to-purple-600 text-white px-4 py-2 rounded-lg font-semibold text-sm text-center hover:from-primary-700 hover:to-purple-700 transition">
+                            View Full Details →
+                        </a>
+                        {% if app.resume %}
+                        <a href="{{ url_for('candidates.view_resume', resume_id=app.resume_id) }}"
+                            class="px-4 py-2 border-2 border-gray-200 text-gray-600 rounded-lg font-semibold text-sm hover:border-primary-400 hover:text-primary-600 transition">
+                            Resume
+                        </a>
+                        {% endif %}
+                        <!-- Quick shortlist button -->
+                        {% if app.status == 'pending' %}
+                        <form method="POST" action="{{ url_for('dashboard.update_application_status', application_id=app.id) }}" class="inline"
+                              onsubmit="return confirm('Shortlist {{ app.candidate.full_name if app.candidate else 'this candidate' }} for {{ (job.title if job else 'this position') | replace("'", "\\'") }}?\n\nThis will send an email and in-app notification to the candidate.')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" name="status" value="shortlisted"
+                                class="px-4 py-2 bg-blue-50 border-2 border-blue-300 text-blue-700 rounded-lg font-semibold text-sm hover:bg-blue-100 transition">
+                                ⭐ Shortlist
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="bg-white rounded-3xl shadow-xl p-16 text-center">
+            <svg class="w-24 h-24 mx-auto text-gray-300 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                </path>
+            </svg>
+            <h2 class="text-2xl font-bold text-gray-900 mb-3">No Applications Yet</h2>
+            <p class="text-gray-500 mb-6">This job hasn't received any applications yet.</p>
+            <a href="{{ url_for('jobs.view_job', job_id=job.id) }}"
+                class="inline-block bg-gradient-to-r from-primary-600 to-purple-600 text-white px-8 py-3 rounded-xl font-bold hover:from-primary-700 hover:to-purple-700 transition shadow-lg">
+                View Job Posting
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Filter by score tier
+function filterApps(tier) {
+    document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('active', 'border-primary-500', 'bg-primary-50', 'text-primary-700');
+        b.classList.add('border-gray-200', 'text-gray-600');
+    });
+    const btn = document.querySelector('[data-filter="' + tier + '"]');
+    if (btn) {
+        btn.classList.add('active', 'border-primary-500', 'bg-primary-50', 'text-primary-700');
+        btn.classList.remove('border-gray-200', 'text-gray-600');
+    }
+    applyFilters();
+}
+
+function filterByStatus(status) { applyFilters(); }
+
+function applyFilters() {
+    const tierBtn = document.querySelector('.filter-btn.active');
+    const tier = tierBtn ? tierBtn.dataset.filter : 'all';
+    const statusSel = document.querySelector('select');
+    const status = statusSel ? statusSel.value : 'all';
+
+    let visible = 0;
+    document.querySelectorAll('.app-card').forEach(card => {
+        const score = parseInt(card.dataset.score);
+        const cardStatus = card.dataset.status;
+        let showTier = tier === 'all'
+            || (tier === 'high' && score >= 75)
+            || (tier === 'medium' && score >= 50 && score < 75)
+            || (tier === 'low' && score < 50);
+        let showStatus = status === 'all' || cardStatus === status;
+        if (showTier && showStatus) { card.style.display = ''; visible++; }
+        else { card.style.display = 'none'; }
+    });
+    const vc = document.getElementById('visible-count');
+    if (vc) vc.textContent = visible;
+}
+
+// ── Auto-Shortlist Agent modal ──────────────────────────
+function openAutoShortlistModal() {
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelectorAll('[name^="slot_"][name$="_date"]').forEach(el => { el.min = today; });
+    updateShortlistPreview(parseInt(document.getElementById('threshold-range').value));
+    document.getElementById('auto-shortlist-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+function closeAutoShortlistModal() {
+    document.getElementById('auto-shortlist-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+function updateThreshold(val) {
+    document.getElementById('threshold-display').textContent = val + '%';
+    updateShortlistPreview(parseInt(val));
+}
+function updateShortlistPreview(threshold) {
+    const eligible = [];
+    document.querySelectorAll('.app-card').forEach(card => {
+        const score  = parseInt(card.dataset.score);
+        const status = card.dataset.status;
+        if (status === 'pending' && score >= threshold) {
+            const name = card.querySelector('h2')?.textContent?.trim() || 'Candidate';
+            eligible.push({ name, score });
+        }
+    });
+    eligible.sort((a, b) => b.score - a.score);
+    document.getElementById('preview-count').textContent = eligible.length;
+    const listEl = document.getElementById('preview-list');
+    if (eligible.length === 0) {
+        listEl.innerHTML = '<p class="text-sm text-indigo-400 italic">No pending candidates meet this threshold.</p>';
+    } else {
+        listEl.innerHTML = eligible.slice(0, 8).map(c =>
+            `<div class="flex justify-between items-center py-1.5 border-b border-indigo-100 last:border-0">
+                <span class="text-gray-800 text-sm">${c.name}</span>
+                <span class="font-bold text-sm ${c.score >= 75 ? 'text-green-600' : 'text-yellow-600'}">${c.score}%</span>
+            </div>`
+        ).join('');
+        if (eligible.length > 8)
+            listEl.innerHTML += `<p class="text-xs text-indigo-400 pt-1">…and ${eligible.length - 8} more</p>`;
+    }
+    document.getElementById('auto-shortlist-btn').disabled = eligible.length === 0;
+}
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('auto-shortlist-form');
+    if (form) form.addEventListener('submit', function() {
+        const btn = document.getElementById('auto-shortlist-btn');
+        btn.textContent = '⏳ Processing…';
+        btn.disabled = true;
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAutoShortlistModal(); });
+});
+</script>
+
+<!-- ── Auto-Shortlist Agent Modal ──────────────────────────────────── -->
+<div id="auto-shortlist-modal"
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden"
+     onclick="if(event.target===this) closeAutoShortlistModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden" onclick="event.stopPropagation()">
+
+        <!-- Modal header -->
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6 text-white flex items-start justify-between gap-4">
+            <div>
+                <h3 class="text-xl font-bold">🤖 Auto-Shortlist Agent</h3>
+                <p class="text-indigo-100 text-sm mt-1">Set a match threshold — the AI shortlists matching candidates and sends them interview slot options automatically.</p>
+            </div>
+            <button onclick="closeAutoShortlistModal()" class="text-white/70 hover:text-white text-3xl leading-none mt-0.5">&times;</button>
+        </div>
+
+        <!-- Modal body -->
+        <div class="p-8 overflow-y-auto max-h-[72vh]">
+            <form id="auto-shortlist-form" method="POST"
+                  action="{{ url_for('dashboard.auto_shortlist', job_id=job.id) }}">
+
+                <!-- ① Threshold slider -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-sm font-bold text-gray-700">📊 Match Score Threshold</label>
+                        <span id="threshold-display" class="text-lg font-black text-indigo-600">70%</span>
+                    </div>
+                    <input type="range" id="threshold-range" name="threshold"
+                           min="50" max="95" value="70" step="5"
+                           oninput="updateThreshold(this.value)"
+                           class="w-full h-2.5 rounded-lg cursor-pointer accent-indigo-600">
+                    <div class="flex justify-between text-xs text-gray-400 mt-1.5">
+                        <span>50% — more candidates</span>
+                        <span>95% — top matches only</span>
+                    </div>
+                </div>
+
+                <!-- ② Live preview -->
+                <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-5 mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-bold text-indigo-800">Candidates to be shortlisted</span>
+                        <span id="preview-count" class="text-3xl font-black text-indigo-600">0</span>
+                    </div>
+                    <div id="preview-list" class="max-h-36 overflow-y-auto"></div>
+                </div>
+
+                <!-- ③ Interview slot pickers -->
+                <div class="mb-6">
+                    <h4 class="text-sm font-bold text-gray-700 mb-1">📅 Available Interview Slots</h4>
+                    <p class="text-xs text-gray-400 mb-4">Shortlisted candidates will receive these options and choose the slot that suits them best. At least one slot is required.</p>
+                    <div class="space-y-3">
+                        {% for i in range(1, 4) %}
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">
+                                    Slot {{ i }} — Date{% if i == 1 %} <span class="text-red-500">*</span>{% endif %}
+                                </label>
+                                <input type="date" name="slot_{{ i }}_date"
+                                       {% if i == 1 %}required{% endif %}
+                                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">
+                                    Slot {{ i }} — Time (IST){% if i == 1 %} <span class="text-red-500">*</span>{% endif %}
+                                </label>
+                                <input type="time" name="slot_{{ i }}_time"
+                                       {% if i == 1 %}required{% endif %}
+                                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- ④ Info banner -->
+                <div class="text-sm text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 mb-6">
+                    <strong>What this agent does:</strong> Each qualifying candidate receives an
+                    in-app notification &amp; a personalised email with a secure link to choose
+                    their preferred slot. Their status moves to <em>Shortlisted</em> immediately.
+                    When they confirm, the status advances to <em>Interview</em> and you receive a notification.
+                </div>
+
+                <!-- ⑤ Confirm / cancel -->
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeAutoShortlistModal()"
+                            class="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" id="auto-shortlist-btn"
+                            class="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            disabled>
+                        🤖 Run Auto-Shortlist
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+        {% if applications %}
+        <!-- Applications List -->
+        <div class="space-y-6">
+            {% for app in applications %}
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover-lift">
+                <div class="p-8">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="flex-1">
+                            <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ app.candidate.full_name if
+                                app.candidate else 'Candidate' }}</h2>
+                            <p class="text-gray-600">{{ app.candidate.email if app.candidate else 'No email' }}</p>
+                            <p class="text-sm text-gray-500 mt-2">Applied on {{ app.applied_at[:10] if app.applied_at
+                                else 'N/A' }}</p>
+                        </div>
+                        <div class="text-right">
+                            {% set status_colors = {
+                            'pending': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                            'shortlisted': 'bg-blue-100 text-blue-800 border-blue-300',
+                            'interview': 'bg-purple-100 text-purple-800 border-purple-300',
+                            'rejected': 'bg-red-100 text-red-800 border-red-300',
+                            'hired': 'bg-green-100 text-green-800 border-green-300'
+                            } %}
+                            <span
+                                class="inline-block px-4 py-2 rounded-full font-bold border-2 {{ status_colors.get(app.status, 'bg-gray-100 text-gray-800 border-gray-300') }}">
+                                {{ app.status.title() }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Match Score -->
+                    <div class="bg-gradient-to-r from-primary-50 to-purple-50 rounded-xl p-6 mb-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-1">AI Match Score</p>
+                                <div class="flex items-center">
+                                    <span class="text-4xl font-extrabold text-primary-600">{{ (app.similarity_score *
+                                        100) | int }}%</span>
+                                    <span class="ml-4 text-lg font-semibold">
+                                        {% if app.similarity_score >=0.8 %}
+                                        <span class="text-green-600">Excellent Match</span>
+                                        {% elif app.similarity_score >= 0.6 %}
+                                        <span class="text-blue-600">Good Match</span>
+                                        {% else %}
+                                        <span class="text-yellow-600">Fair Match</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Match Breakdown -->
+                            {% if app.match_breakdown %}
+                            <div class="text-sm space-y-2">
+                                {% set breakdown = app.match_breakdown %}
+                                {% if breakdown.skills_match is defined %}
+                                <div class="flex items-center">
+                                    <span class="w-24 text-gray-600">Skills:</span>
+                                    <div class="flex-1 bg-gray-200 rounded-full h-2 ml-2">
+                                        <div class="bg-primary-600 h-2 rounded-full"
+                                            style="width: {{ (breakdown.skills_match * 100) | int }}%"></div>
+                                    </div>
+                                    <span class="ml-2 font-semibold text-primary-600">{{ (breakdown.skills_match * 100)
+                                        | int }}%</span>
+                                </div>
+                                {% endif %}
+                                {% if breakdown.experience_match is defined %}
+                                <div class="flex items-center">
+                                    <span class="w-24 text-gray-600">Experience:</span>
+                                    <div class="flex-1 bg-gray-200 rounded-full h-2 ml-2">
+                                        <div class="bg-purple-600 h-2 rounded-full"
+                                            style="width: {{ (breakdown.experience_match * 100) | int }}%"></div>
+                                    </div>
+                                    <span class="ml-2 font-semibold text-purple-600">{{ (breakdown.experience_match *
+                                        100) | int }}%</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Resume Skills -->
+                    {% if app.resume %}
+                    {% set resume_skills = app.resume.skills | from_json %}
+                    {% if resume_skills %}
+                    <div class="mb-6">
+                        <p class="text-sm font-semibold text-gray-700 mb-3">Candidate Skills</p>
+                        <div class="flex flex-wrap gap-2">
+                            {% for skill in resume_skills[:10] %}
+                            <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">{{
+                                skill }}</span>
+                            {% endfor %}
+                            {% if resume_skills|length > 10 %}
+                            <span class="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-sm">+{{
+                                resume_skills|length - 10 }} more</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="grid md:grid-cols-2 gap-4 mb-6 text-sm">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-600">Experience</p>
+                            <p class="font-semibold text-gray-900">{{ app.resume.experience_years or 0 }} years</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-600">Resume</p>
+                            <p class="font-semibold text-gray-900 truncate">{{ app.resume.filename }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Actions -->
+                    <div class="flex gap-3">
+                        <a href="{{ url_for('candidates.view_application', application_id=app.id) }}"
+                            class="flex-1 bg-gradient-to-r from-primary-600 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold text-center hover:from-primary-700 hover:to-purple-700">
+                            View Full Details
+                        </a>
+                        {% if app.resume %}
+                        <a href="{{ url_for('candidates.view_resume', resume_id=app.resume_id) }}"
+                            class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-primary-500 hover:text-primary-600">
+                            View Resume
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="bg-white rounded-3xl shadow-2xl p-16 text-center">
+            <svg class="w-32 h-32 mx-auto text-gray-300 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                </path>
+            </svg>
+            <h2 class="text-3xl font-bold text-gray-900 mb-4">No Applications Yet</h2>
+            <p class="text-xl text-gray-600 mb-8">This job hasn't received any applications yet</p>
+            <a href="{{ url_for('jobs.view_job', job_id=job.id) }}"
+                class="inline-block bg-gradient-to-r from-primary-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-primary-700 hover:to-purple-700 hover-lift shadow-lg">
+                View Job Posting
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

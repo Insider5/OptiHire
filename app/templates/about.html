@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+
+{% block title %}About Us - OptiHire{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-br from-blue-50 via-white to-purple-50 py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="text-center mb-16">
+            <h1 class="text-5xl font-extrabold text-gray-900 mb-4">
+                About <span
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-purple-600">OptiHire</span>
+            </h1>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Transforming recruitment with AI-powered intelligence
+            </p>
+        </div>
+
+        <!-- Mission Section -->
+        <div class="bg-white rounded-3xl shadow-2xl p-12 mb-16">
+            <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center">Our Mission</h2>
+            <p class="text-lg text-gray-700 leading-relaxed text-center max-w-4xl mx-auto">
+                OptiHire is revolutionizing the recruitment industry by leveraging cutting-edge AI technologies to
+                create perfect matches between talented candidates and innovative companies. We believe that finding the
+                right job or the right candidate shouldn't be a game of chance—it should be powered by intelligent
+                algorithms that understand skills, experience, and potential.
+            </p>
+        </div>
+
+        <!-- Features Grid -->
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+            <div class="bg-white rounded-2xl shadow-lg p-8 hover-lift">
+                <div
+                    class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mb-6">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-3">AI-Powered Matching</h3>
+                <p class="text-gray-600">
+                    Our semantic matching engine uses Sentence-BERT to analyze resumes and job descriptions, creating
+                    accurate compatibility scores.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-lg p-8 hover-lift">
+                <div
+                    class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center mb-6">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                        </path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-3">Smart Resume Parsing</h3>
+                <p class="text-gray-600">
+                    Advanced NER (Named Entity Recognition) automatically extracts skills, experience, education, and
+                    certifications from resumes.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-lg p-8 hover-lift">
+                <div
+                    class="w-16 h-16 bg-gradient-to-br from-pink-500 to-pink-700 rounded-2xl flex items-center justify-center mb-6">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z">
+                        </path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-3">Interview Preparation</h3>
+                <p class="text-gray-600">
+                    AI-generated interview questions tailored to each job and candidate help both parties prepare
+                    effectively.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-lg p-8 hover-lift">
+                <div
+                    class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl flex items-center justify-center mb-6">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                        </path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-3">Comprehensive ATS</h3>
+                <p class="text-gray-600">
+                    Full applicant tracking system for recruiters to manage candidates through the entire hiring
+                    pipeline.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-lg p-8 hover-lift">
+                <div
+                    class="w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-2xl flex items-center justify-center mb-6">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                        </path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-3">Secure & Private</h3>
+                <p class="text-gray-600">
+                    Your data is encrypted and stored securely. We never share your information without explicit
+                    permission.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-lg p-8 hover-lift">
+                <div
+                    class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl flex items-center justify-center mb-6">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-3">Save Time</h3>
+                <p class="text-gray-600">
+                    Reduce time-to-hire by up to 50% with our intelligent automation and smart candidate ranking.
+                </p>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="bg-gradient-to-r from-primary-600 to-purple-600 rounded-3xl p-12 text-white mb-16">
+            <h2 class="text-3xl font-bold mb-8 text-center">Our Impact</h2>
+            <div class="grid md:grid-cols-4 gap-8 text-center">
+                <div>
+                    <div class="text-5xl font-bold mb-2">95%</div>
+                    <div class="text-lg opacity-90">Match Accuracy</div>
+                </div>
+                <div>
+                    <div class="text-5xl font-bold mb-2">50%</div>
+                    <div class="text-lg opacity-90">Time Saved</div>
+                </div>
+                <div>
+                    <div class="text-5xl font-bold mb-2">10K+</div>
+                    <div class="text-lg opacity-90">Successful Hires</div>
+                </div>
+                <div>
+                    <div class="text-5xl font-bold mb-2">98%</div>
+                    <div class="text-lg opacity-90">User Satisfaction</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technology Stack -->
+        <div class="bg-white rounded-3xl shadow-2xl p-12">
+            <h2 class="text-3xl font-bold text-gray-900 mb-8 text-center">Built with Cutting-Edge Technology</h2>
+            <div class="grid md:grid-cols-2 gap-12">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Backend & AI</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center text-gray-700">
+                            <span class="w-2 h-2 bg-primary-600 rounded-full mr-3"></span>
+                            Flask - Robust Python web framework
+                        </li>
+                        <li class="flex items-center text-gray-700">
+                            <span class="w-2 h-2 bg-primary-600 rounded-full mr-3"></span>
+                            spaCy - Advanced NER for resume parsing
+                        </li>
+                        <li class="flex items-center text-gray-700">
+                            <span class="w-2 h-2 bg-primary-600 rounded-full mr-3"></span>
+                            Sentence-BERT - Semantic similarity matching
+                        </li>
+                        <li class="flex items-center text-gray-700">
+                            <span class="w-2 h-2 bg-primary-600 rounded-full mr-3"></span>
+                            Google Gemini - LLM for interview questions
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Frontend & Design</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center text-gray-700">
+                            <span class="w-2 h-2 bg-purple-600 rounded-full mr-3"></span>
+                            Jinja2 - Powerful templating engine
+                        </li>
+                        <li class="flex items-center text-gray-700">
+                            <span class="w-2 h-2 bg-purple-600 rounded-full mr-3"></span>
+                            Tailwind CSS - Modern utility-first CSS
+                        </li>
+                        <li class="flex items-center text-gray-700">
+                            <span class="w-2 h-2 bg-purple-600 rounded-full mr-3"></span>
+                            Responsive Design - Works on all devices
+                        </li>
+                        <li class="flex items-center text-gray-700">
+                            <span class="w-2 h-2 bg-purple-600 rounded-full mr-3"></span>
+                            Modern UI/UX - Intuitive and beautiful
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

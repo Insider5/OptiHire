@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}Apply for {{ job.title }} - OptiHire{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-br from-blue-50 via-white to-purple-50 py-16 min-h-screen">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <a href="{{ url_for('jobs.view_job', job_id=job.id) }}"
+                class="text-primary-600 hover:text-primary-700 font-medium mb-4 inline-flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Back to Job
+            </a>
+            <h1 class="text-4xl font-extrabold text-gray-900 mt-4">
+                Apply for <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-purple-600">{{
+                    job.title }}</span>
+            </h1>
+            <p class="text-xl text-gray-600 mt-2">{{ job.company }}</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            <!-- Application Form -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-lg p-8">
+                    <form method="POST" class="space-y-6">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <!-- Resume Selection -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-900 mb-3">Select Resume *</label>
+                            <div class="space-y-3">
+                                {% for resume in resumes %}
+                                <label
+                                    class="flex items-start p-4 border-2 border-gray-200 rounded-xl hover:border-primary-500 cursor-pointer transition-colors">
+                                    <input type="radio" name="resume_id" value="{{ resume.id }}" class="mt-1 mr-4"
+                                        required>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <p class="font-semibold text-gray-900">{{ resume.filename }}</p>
+                                                <p class="text-sm text-gray-600 mt-1">{{ resume.experience_years or 0 }}
+                                                    years experience</p>
+                                            </div>
+                                            <span class="text-xs text-gray-500">{{ resume.created_at[:10] if
+                                                resume.created_at else 'N/A' }}</span>
+                                        </div>
+                                        {% set skills = resume.skills | from_json %}
+                                        {% if skills %}
+                                        <div class="flex flex-wrap gap-2 mt-3">
+                                            {% for skill in skills[:5] %}
+                                            <span
+                                                class="px-2 py-1 bg-primary-100 text-primary-700 rounded text-xs font-medium">{{
+                                                skill }}</span>
+                                            {% endfor %}
+                                            {% if skills|length > 5 %}
+                                            <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">+{{
+                                                skills|length - 5 }} more</span>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            {% if not resumes %}
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                                <p class="text-yellow-800 mb-3">You haven't uploaded a resume yet!</p>
+                                <a href="{{ url_for('candidates.upload_resume') }}"
+                                    class="inline-block bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 font-medium">
+                                    Upload Resume
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Cover Letter -->
+                        <div>
+                            <label for="cover_letter" class="block text-sm font-bold text-gray-900 mb-3">
+                                Cover Letter (Optional)
+                            </label>
+                            <textarea name="cover_letter" id="cover_letter" rows="6"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                placeholder="Tell us why you're a great fit for this position..."></textarea>
+                            <p class="text-sm text-gray-500 mt-2">Share your motivation and what makes you the perfect
+                                candidate</p>
+                        </div>
+
+                        <!-- Info Box -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                            <h3 class="font-bold text-blue-900 mb-3 flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                What Happens Next?
+                            </h3>
+                            <ul class="space-y-2 text-sm text-blue-800">
+                                <li class="flex items-start">
+                                    <span class="mr-2">•</span>
+                                    <span>AI will analyze your resume against job requirements</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="mr-2">•</span>
+                                    <span>You'll receive a match score and detailed breakdown</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="mr-2">•</span>
+                                    <span>Custom interview questions will be generated for you</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="mr-2">•</span>
+                                    <span>The recruiter will be notified of your application</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Submit Button -->
+                        {% if resumes %}
+                        <button type="submit"
+                            class="w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-primary-700 hover:to-purple-700 hover-lift shadow-lg">
+                            Submit Application
+                        </button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+
+            <!-- Job Summary Sidebar -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-2xl shadow-lg p-6 sticky top-24">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Job Summary</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Company</p>
+                            <p class="text-gray-900 font-semibold">{{ job.company }}</p>
+                        </div>
+                        {% if job.location %}
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Location</p>
+                            <p class="text-gray-900">{{ job.location }}</p>
+                        </div>
+                        {% endif %}
+                        {% if job.job_type %}
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Job Type</p>
+                            <p class="text-gray-900">{{ job.job_type }}</p>
+                        </div>
+                        {% endif %}
+                        {% if job.experience_level %}
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Experience Level</p>
+                            <p class="text-gray-900">{{ job.experience_level }}</p>
+                        </div>
+                        {% endif %}
+                        {% if job.salary_range %}
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Salary Range</p>
+                            <p class="text-gray-900 font-semibold text-green-600">{{ job.salary_range }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% set skills = job.skills_required | from_json %}
+                    {% if skills %}
+                    <div class="mt-6 pt-6 border-t">
+                        <p class="text-sm font-medium text-gray-500 mb-3">Required Skills</p>
+                        <div class="flex flex-wrap gap-2">
+                            {% for skill in skills %}
+                            <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">{{
+                                skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

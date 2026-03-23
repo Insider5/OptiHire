@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Recruiter Analytics — OptiHire{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Recruiter Analytics</h1>
+            <p class="text-gray-500 mt-1">AI-powered insights on your applicant pool</p>
+        </div>
+        <a href="{{ url_for('dashboard.recruiter_dashboard') }}" class="text-primary-600 hover:text-primary-700 font-medium">← Dashboard</a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        {% set cards = [
+            ('Total Jobs', summary.total_jobs, '💼', 'bg-blue-50 border-blue-100 text-blue-700'),
+            ('Active Jobs', summary.active_jobs, '✅', 'bg-green-50 border-green-100 text-green-700'),
+            ('Total Applications', summary.total_applications, '📋', 'bg-purple-50 border-purple-100 text-purple-700'),
+            ('Avg Match Score', (summary.score_mean | string) + '%', '🎯', 'bg-amber-50 border-amber-100 text-amber-700')
+        ] %}
+        {% for label, value, icon, cls in cards %}
+        <div class="rounded-xl border p-5 {{ cls }} shadow-sm">
+            <div class="text-2xl mb-1">{{ icon }}</div>
+            <div class="text-2xl font-extrabold">{{ value }}</div>
+            <div class="text-sm font-medium mt-0.5 opacity-75">{{ label }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Score Distribution Histogram (Fig. 3 from paper) -->
+        <div class="bg-white rounded-2xl shadow border border-gray-100 p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-1">Score Distribution</h2>
+            <p class="text-sm text-gray-500 mb-4">Mean {{ summary.score_mean }}% · Median {{ summary.score_median }}% · Std ±{{ summary.score_std }}%</p>
+            <canvas id="histChart" height="200"></canvas>
+        </div>
+
+        <!-- Application Status Breakdown -->
+        <div class="bg-white rounded-2xl shadow border border-gray-100 p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-1">Application Status</h2>
+            <p class="text-sm text-gray-500 mb-4">Current pipeline breakdown</p>
+            <canvas id="statusChart" height="200"></canvas>
+        </div>
+
+        <!-- Feature Ratings Radar (Fig. 4 from paper) -->
+        <div class="bg-white rounded-2xl shadow border border-gray-100 p-6 lg:col-span-2">
+            <h2 class="text-lg font-bold text-gray-800 mb-1">Platform Feature Ratings</h2>
+            <p class="text-sm text-gray-500 mb-4">User satisfaction scores from research evaluation (1–5 scale)</p>
+            <div style="max-width: 420px; margin: 0 auto">
+                <canvas id="radarChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Applicants table -->
+    {% if applications %}
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-6 mt-8">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Top Matched Applicants</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-gray-500 border-b">
+                        <th class="pb-3 font-medium">Job</th>
+                        <th class="pb-3 font-medium">Match Score</th>
+                        <th class="pb-3 font-medium">Status</th>
+                        <th class="pb-3 font-medium">Applied</th>
+                        <th class="pb-3 font-medium"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for app in (applications | sort(attribute='similarity_score', reverse=True))[:10] %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="py-3 font-medium text-gray-800">{{ app.job_title }}</td>
+                        <td class="py-3">
+                            {% set pct = ((app.similarity_score or 0) * 100) | int %}
+                            <div class="flex items-center gap-2">
+                                <div class="w-24 bg-gray-100 rounded-full h-2">
+                                    <div class="h-2 rounded-full {{ 'bg-green-500' if pct >= 75 else 'bg-yellow-500' if pct >= 50 else 'bg-red-400' }}" style="width: {{ pct }}%"></div>
+                                </div>
+                                <span class="font-semibold {{ 'text-green-600' if pct >= 75 else 'text-yellow-600' if pct >= 50 else 'text-red-500' }}">{{ pct }}%</span>
+                            </div>
+                        </td>
+                        <td class="py-3">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium
+                                {% if app.status == 'hired' %}bg-green-100 text-green-700
+                                {% elif app.status == 'shortlisted' %}bg-blue-100 text-blue-700
+                                {% elif app.status == 'interview' %}bg-purple-100 text-purple-700
+                                {% elif app.status == 'rejected' %}bg-red-100 text-red-600
+                                {% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                                {{ app.status | capitalize }}
+                            </span>
+                        </td>
+                        <td class="py-3 text-gray-500">{{ app.applied_at[:10] if app.applied_at else '—' }}</td>
+                        <td class="py-3">
+                            <a href="{{ url_for('candidates.view_application', application_id=app.id) }}" class="text-primary-600 hover:text-primary-700 text-xs font-medium">View →</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Score Distribution Histogram
+const histCtx = document.getElementById('histChart').getContext('2d');
+new Chart(histCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ summary.score_labels | tojson }},
+        datasets: [{
+            label: 'Number of Applicants',
+            data: {{ summary.score_buckets | tojson }},
+            backgroundColor: 'rgba(14, 165, 233, 0.7)',
+            borderColor: 'rgba(3, 105, 161, 1)',
+            borderWidth: 1,
+            borderRadius: 4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: 'Applicants' } },
+            x: { title: { display: true, text: 'Match Score Range' } }
+        }
+    }
+});
+
+// Status Donut Chart
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+const statusData = {{ summary.status_counts | tojson }};
+new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(statusData).map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+        datasets: [{
+            data: Object.values(statusData),
+            backgroundColor: ['#fbbf24','#60a5fa','#a78bfa','#34d399','#f87171'],
+            borderWidth: 2, borderColor: '#fff'
+        }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'right' } } }
+});
+
+// Feature Ratings Radar (from paper Fig. 4)
+const radarCtx = document.getElementById('radarChart').getContext('2d');
+new Chart(radarCtx, {
+    type: 'radar',
+    data: {
+        labels: ['Resume Parsing','Semantic Matching','XAI Breakdown','AI Interview Qs','App Tracking','Feedback'],
+        datasets: [{
+            label: 'User Ratings (out of 5)',
+            data: [4.6, 4.8, 4.7, 4.3, 4.5, 4.4],
+            backgroundColor: 'rgba(14, 165, 233, 0.2)',
+            borderColor: '#0ea5e9',
+            pointBackgroundColor: '#0ea5e9',
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: { r: { min: 0, max: 5, ticks: { stepSize: 1 } } },
+        plugins: { legend: { display: false } }
+    }
+});
+</script>
+{% endblock %}

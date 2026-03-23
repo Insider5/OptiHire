@@ -1,0 +1,411 @@
+{% extends 'base.html' %}
+
+{% block title %}Recruiter Dashboard - OptiHire{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-16" style="background:var(--r-page-bg)">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-12">
+            <h1 class="text-4xl font-extrabold drop-shadow" style="color:var(--r-heading)">
+                Recruiter <span
+                    class="text-transparent bg-clip-text"
+                    style="background-image:linear-gradient(90deg,#F042FF,#87F5F5)">Dashboard</span>
+            </h1>
+            <p class="text-lg mt-2" style="color:var(--r-subtext)">Manage your job postings and applications</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid md:grid-cols-4 gap-6 mb-12">
+            <div class="rounded-2xl shadow-xl p-6 hover-lift" style="background:linear-gradient(135deg,#160078,#7226FF);">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:rgba(255,255,255,0.15)">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-white mb-1">{{ stats.total_jobs }}</p>
+                <p class="text-sm" style="color:#c4b5fd">Total Jobs Posted</p>
+            </div>
+
+            <div class="rounded-2xl shadow-xl p-6 hover-lift" style="background:linear-gradient(135deg,#7226FF,#F042FF);">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:rgba(255,255,255,0.15)">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-white mb-1">{{ stats.active_jobs }}</p>
+                <p class="text-sm" style="color:#FFE5F1">Active Postings</p>
+            </div>
+
+            <div class="rounded-2xl shadow-xl p-6 hover-lift" style="background:linear-gradient(135deg,#F042FF,#87F5F5);">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:rgba(255,255,255,0.15)">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-white mb-1">{{ stats.total_applications }}</p>
+                <p class="text-sm" style="color:#010030">Total Applications</p>
+            </div>
+
+            <div class="rounded-2xl shadow-xl p-6 hover-lift" style="background:linear-gradient(135deg,#FFE5F1,#F042FF);">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:rgba(255,255,255,0.25)">
+                        <svg class="w-6 h-6" style="color:#7226FF" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold" style="color:#7226FF">{{ stats.pending_applications }}</p>
+                <p class="text-sm" style="color:#7226FF">Pending Review</p>
+            </div>
+        </div>
+
+        <!-- ── Interview Calendar ──────────────────────────────── -->
+        <div class="rounded-2xl shadow-xl p-8 mb-12" style="background:var(--r-cal-bg);backdrop-filter:blur(12px);border:1px solid var(--r-cal-bdr);box-shadow:var(--r-panel-sdw)">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold" style="color:var(--r-heading)">📅 Interview Calendar</h2>
+                    <p class="text-sm mt-0.5" style="color:var(--r-subtext)">Confirmed candidate interview slots, day-wise</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="cal-prev"
+                            class="w-9 h-9 flex items-center justify-center rounded-full text-xl font-bold leading-none transition"
+                            style="border:2px solid var(--r-cal-nbdr);color:var(--r-cal-nclr)">&#8249;</button>
+                    <span id="cal-month-label"
+                          class="text-lg font-bold w-44 text-center select-none" style="color:var(--r-cal-mth)"></span>
+                    <button id="cal-next"
+                            class="w-9 h-9 flex items-center justify-center rounded-full text-xl font-bold leading-none transition"
+                            style="border:2px solid var(--r-cal-nbdr);color:var(--r-cal-nclr)">&#8250;</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Calendar grid -->
+                <div class="lg:col-span-2">
+                    <div class="grid grid-cols-7 mb-2">
+                        {% for dn in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
+                        <div class="text-center text-xs font-bold py-2 uppercase tracking-wide" style="color:var(--r-cal-dn)">{{ dn }}</div>
+                        {% endfor %}
+                    </div>
+                    <div id="cal-grid" class="grid grid-cols-7 gap-1 min-h-56"></div>
+                </div>
+
+                <!-- Detail panel -->
+                <div class="lg:col-span-1 flex flex-col">
+                    <div id="cal-empty-state"
+                         class="flex flex-col items-center justify-center flex-1 min-h-48 rounded-2xl text-center p-8"
+                         style="border:2px dashed var(--r-cal-ebdr)">
+                        <span class="text-5xl mb-3">🗓️</span>
+                        <p class="font-semibold" style="color:var(--r-cal-etxt)">No date selected</p>
+                        <p class="text-sm mt-1" style="color:var(--r-cal-esub)">Click a highlighted day to see scheduled interviews</p>
+                    </div>
+                    <div id="cal-day-detail" class="hidden">
+                        <h3 id="cal-day-title" class="text-sm font-bold mb-4" style="color:var(--r-cal-ttl)"></h3>
+                        <div id="cal-day-cards" class="space-y-4 overflow-y-auto pr-1" style="max-height:480px"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        (function () {
+            const EVENTS = {{ interview_events | tojson }};
+
+            const eventMap = {};
+            EVENTS.forEach(ev => {
+                if (!eventMap[ev.date]) eventMap[ev.date] = [];
+                eventMap[ev.date].push(ev);
+            });
+
+            let curYear, curMonth;
+
+            const MONTHS = ['January','February','March','April','May','June',
+                            'July','August','September','October','November','December'];
+
+            function init() {
+                const today = new Date();
+                curYear  = today.getFullYear();
+                curMonth = today.getMonth();
+                renderMonth();
+            }
+
+            function fmtDate(y, m, d) {
+                return y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+            }
+
+            function esc(s) {
+                return String(s || '')
+                    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+            function renderMonth() {
+                document.getElementById('cal-month-label').textContent = MONTHS[curMonth] + ' ' + curYear;
+                const grid    = document.getElementById('cal-grid');
+                grid.innerHTML = '';
+                const today    = new Date();
+                const todayStr = fmtDate(today.getFullYear(), today.getMonth()+1, today.getDate());
+                const firstDay = new Date(curYear, curMonth, 1).getDay();
+                const days     = new Date(curYear, curMonth+1, 0).getDate();
+
+                for (let i = 0; i < firstDay; i++) {
+                    const blank = document.createElement('div');
+                    blank.className = 'h-16';
+                    grid.appendChild(blank);
+                }
+
+                for (let d = 1; d <= days; d++) {
+                    const ds  = fmtDate(curYear, curMonth+1, d);
+                    const evs = eventMap[ds];
+                    const has = !!evs;
+                    const isTd= ds === todayStr;
+
+                    const cell = document.createElement('div');
+                    cell.className = 'rec-cal-cell' +
+                        (has           ? ' rec-cal-cell-has'   : '') +
+                        (isTd && !has  ? ' rec-cal-cell-today' : '');
+
+                    const num = document.createElement('span');
+                    num.className = 'rec-cal-num ' + (isTd ? 'rec-cal-num-today' : has ? 'rec-cal-num-has' : 'rec-cal-num-other');
+                    num.textContent = d;
+                    cell.appendChild(num);
+
+                    if (has) {
+                        const badge = document.createElement('span');
+                        badge.className = 'rec-cal-badge';
+                        badge.textContent = evs.length;
+                        cell.appendChild(badge);
+                        cell.addEventListener('click', (function(date){ return function(){ showDay(date); }; })(ds));
+                    }
+
+                    if (isTd) {
+                        const dot = document.createElement('span');
+                        dot.className = 'rec-cal-dot';
+                        cell.appendChild(dot);
+                    }
+
+                    grid.appendChild(cell);
+                }
+            }
+
+            function showDay(ds) {
+                const evs = (eventMap[ds] || []).slice().sort((a,b)=>a.time.localeCompare(b.time));
+                const [y,m,d] = ds.split('-').map(Number);
+                const dt    = new Date(y, m-1, d);
+                const title = dt.toLocaleDateString('en-US',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+                document.getElementById('cal-empty-state').classList.add('hidden');
+                document.getElementById('cal-day-detail').classList.remove('hidden');
+                document.getElementById('cal-day-title').textContent =
+                    evs.length + ' Interview' + (evs.length !== 1 ? 's' : '') + ' \u2014 ' + title;
+
+                const container = document.getElementById('cal-day-cards');
+                container.innerHTML = '';
+
+                evs.forEach(ev => {
+                    const sc = ev.similarity_score >= 80 ? 'background:rgba(20,184,166,0.15);color:var(--r-ac-clr)'
+                             : ev.similarity_score >= 60 ? 'background:rgba(112,38,255,0.15);color:var(--r-subtext)'
+                                                         : 'background:rgba(245,158,11,0.15);color:#b45309';
+                    const skillsHtml = ev.skills.slice(0,5)
+                        .map(s=>`<span class="rec-cal-skill">${esc(s)}</span>`)
+                        .join('');
+                    const card = document.createElement('div');
+                    card.className = 'rec-cal-card';
+                    card.innerHTML =
+                        `<div class="flex items-start justify-between gap-2 mb-2">`+
+                          `<div class="flex-1 min-w-0">`+
+                            `<p class="rec-cal-c-name">${esc(ev.candidate_name)}</p>`+
+                            `<p class="rec-cal-c-email">${esc(ev.candidate_email)}</p>`+
+                          `</div>`+
+                          `<span class="flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full" style="${sc}">${ev.similarity_score}%</span>`+
+                        `</div>`+
+                        `<div class="flex items-center gap-2 text-sm mb-2">`+
+                          `<span class="rec-cal-c-time">&#9200; ${esc(ev.time)}</span>`+
+                          `<span class="rec-cal-c-sep">|</span>`+
+                          `<span class="rec-cal-c-dur">${ev.interview_duration} min</span>`+
+                        `</div>`+
+                        `<p class="rec-cal-c-meta mb-2">&#128188; <span class="font-medium">${esc(ev.job_title)}</span>`+
+                          (ev.company ? ` <span class="rec-cal-c-co">@ ${esc(ev.company)}</span>` : '')+
+                        `</p>`+
+                        (ev.exp_years > 0 ? `<p class="rec-cal-c-exp mb-2">${ev.exp_years} yr exp</p>` : '')+
+                        (skillsHtml ? `<div class="flex flex-wrap gap-1 mb-3">${skillsHtml}</div>` : '')+
+                        (ev.interview_notes ? `<p class="rec-cal-c-note mb-2 line-clamp-2">"${esc(ev.interview_notes)}"</p>` : '')+
+                        `<div class="rec-cal-divider flex gap-2">`+
+                          `<a href="/candidates/application/${esc(ev.application_id)}" class="rec-btn-primary">View Details</a>`+
+                          (ev.resume_id
+                            ? `<a href="/candidates/resume/${esc(ev.resume_id)}" class="rec-btn-secondary">Resume</a>`
+                            : '')+
+                        `</div>`;
+                    container.appendChild(card);
+                });
+            }
+
+            document.getElementById('cal-prev').addEventListener('click', function(){
+                curMonth--; if (curMonth < 0) { curMonth = 11; curYear--; } renderMonth();
+            });
+            document.getElementById('cal-next').addEventListener('click', function(){
+                curMonth++; if (curMonth > 11) { curMonth = 0; curYear++; } renderMonth();
+            });
+
+            init();
+        })();
+        </script>
+
+        <!-- Quick Actions & Recent Applications -->
+        <div class="grid lg:grid-cols-3 gap-8 mb-12">
+            <!-- Quick Actions -->
+            <div class="rounded-2xl shadow-xl p-8 text-white hover-lift" style="background:linear-gradient(135deg,#F042FF 0%,#7226FF 60%,#160078 100%)">
+                <h2 class="text-2xl font-bold mb-6">Quick Actions</h2>
+                <div class="space-y-4">
+                    <a href="{{ url_for('jobs.create_job') }}"
+                        class="block w-full bg-white text-primary-600 px-6 py-3 rounded-lg font-semibold text-center hover:bg-gray-100 hover-lift">
+                        + Post New Job
+                    </a>
+                    <a href="{{ url_for('jobs.list_jobs') }}"
+                        class="block w-full bg-white bg-opacity-20 backdrop-blur px-6 py-3 rounded-lg font-semibold text-center hover:bg-opacity-30 hover-lift">
+                        View All Jobs
+                    </a>
+                </div>
+            </div>
+
+            <!-- Recent Applications -->
+            <div class="lg:col-span-2 rounded-2xl shadow-xl p-8" style="background:var(--r-panel-bg);backdrop-filter:blur(12px);border:1px solid var(--r-panel-bdr);box-shadow:var(--r-panel-sdw)">
+                <h2 class="text-2xl font-bold mb-6" style="color:var(--r-heading)">Recent Applications</h2>
+                {% if recent_applications %}
+                <div class="space-y-4">
+                    {% for app in recent_applications[:5] %}
+                    <div class="rounded-lg p-4 hover-lift transition" style="border:1px solid var(--r-acard-bdr);background:var(--r-acard-bg)">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="font-bold" style="color:var(--r-heading)">{{ app.candidate.full_name if app.candidate else
+                                    'Unknown Candidate' }}</h3>
+                                <p class="text-sm mt-1" style="color:var(--r-subtext)">Applied for: {{ app.job.title if app.job else 'Unknown Job' }}</p>
+                                <div class="flex items-center gap-4 mt-2">
+                                    <span class="text-sm font-semibold" style="color:var(--r-match-clr)">Match: {{ (app.similarity_score
+                                        * 100) | int }}%</span>
+                                    <span class="text-xs" style="color:var(--r-date-clr)">{{ app.applied_at[:10] if app.applied_at else
+                                        'N/A' }}</span>
+                                </div>
+                            </div>
+                            <a href="{{ url_for('candidates.view_application', application_id=app.id) }}"
+                                class="px-4 py-2 text-white rounded-lg font-medium text-sm hover-lift"
+                                style="background:linear-gradient(90deg,#F042FF,#7226FF)">
+                                Review
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="italic text-center py-8" style="color:var(--r-noapp-clr)">No recent applications</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- My Job Postings -->
+        <div class="rounded-2xl shadow-xl p-8" style="background:var(--r-panel-bg);backdrop-filter:blur(12px);border:1px solid var(--r-panel-bdr);box-shadow:var(--r-panel-sdw)">
+            <h2 class="text-2xl font-bold mb-6" style="color:var(--r-heading)">My Job Postings</h2>
+            {% if jobs %}
+            <div class="space-y-4">
+                {% for job in jobs %}
+                <div class="rounded-xl p-6 hover-lift transition" style="background:var(--r-jcard-bg);border:1px solid var(--r-jcard-bdr)">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <h3 class="text-2xl font-bold" style="color:var(--r-heading)">{{ job.title }}</h3>
+                                    <p class="text-lg mt-1" style="color:var(--r-subtext)">{{ job.company }}</p>
+                                </div>
+                                {% if job.is_active %}
+                                <span class="px-4 py-2 rounded-full font-semibold text-sm border-2"
+                                      style="background:var(--r-ac-bg);color:var(--r-ac-clr);border-color:var(--r-ac-bdr)">Active</span>
+                                {% else %}
+                                <span class="px-4 py-2 rounded-full font-semibold text-sm border-2"
+                                      style="background:var(--r-ic-bg);color:var(--r-ic-clr);border-color:var(--r-ic-bdr)">Inactive</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="flex gap-4 mt-4 text-sm" style="color:var(--r-muted)">
+                                {% if job.location %}
+                                <span class="flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z">
+                                        </path>
+                                    </svg>
+                                    {{ job.location }}
+                                </span>
+                                {% endif %}
+                                {% if job.job_type %}
+                                <span>{{ job.job_type }}</span>
+                                {% endif %}
+                                <span>Posted: {{ job.created_at[:10] if job.created_at else 'N/A' }}</span>
+                            </div>
+
+                            {% set job_skills = job.skills_required | from_json %}
+                            {% if job_skills %}
+                            <div class="flex flex-wrap gap-2 mt-4">
+                                {% for skill in job_skills[:6] %}
+                                <span class="px-3 py-1 rounded-full text-xs font-medium"
+                                      style="background:var(--r-skill-bg);color:var(--r-skill-clr);border:1px solid var(--r-skill-bdr)">{{ skill }}</span>
+                                {% endfor %}
+                                {% if job_skills|length > 6 %}
+                                <span class="px-3 py-1 rounded-full text-xs" style="background:var(--r-more-bg);color:var(--r-more-clr)">+{{ job_skills|length - 6 }} more</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-4" style="border-top:1px solid var(--r-divider)">
+                        <a href="{{ url_for('dashboard.view_job_applications', job_id=job.id) }}"
+                            class="flex-1 text-white px-6 py-3 rounded-lg font-semibold text-center hover-lift"
+                            style="background:linear-gradient(90deg,#F042FF,#7226FF)">
+                            View Applications
+                        </a>
+                        <a href="{{ url_for('jobs.view_job', job_id=job.id) }}"
+                            class="px-6 py-3 rounded-lg font-semibold transition"
+                            style="border:2px solid var(--r-btn-ol-bdr);color:var(--r-btn-ol-clr)">
+                            View Job
+                        </a>
+                        <a href="{{ url_for('jobs.edit_job', job_id=job.id) }}"
+                            class="px-6 py-3 rounded-lg font-semibold transition"
+                            style="border:2px solid var(--r-btn-cy-bdr);color:var(--r-btn-cy-clr)">
+                            Edit
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <svg class="w-24 h-24 mx-auto mb-4" style="color:var(--r-ei-clr)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                    </path>
+                </svg>
+                <h3 class="text-2xl font-bold mb-2" style="color:var(--r-eh3-clr)">No Job Postings Yet</h3>
+                <p class="mb-6" style="color:var(--r-ep-clr)">Start hiring by posting your first job</p>
+                <a href="{{ url_for('jobs.create_job') }}"
+                    class="inline-block text-white px-8 py-4 rounded-xl font-bold text-lg hover-lift shadow-lg"
+                    style="background:linear-gradient(135deg,#F042FF,#7226FF)">
+                    Post Your First Job
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
