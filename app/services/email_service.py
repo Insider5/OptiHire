@@ -48,7 +48,7 @@ _EMAIL_TEMPLATE = """
         <!-- Body -->
         <tr><td style="padding:36px 40px;">
           <p style="font-size:16px;color:#374151;">Hi <strong>{{ candidate_name }}</strong>,</p>
-          <p style="font-size:15px;color:#374151;line-height:1.6;">{{ message }}</p>
+          <p style="font-size:15px;color:#374151;line-height:1.6;">{{ message|safe }}</p>
           <div style="margin:28px 0;padding:20px 24px;background:#f8fafc;border-left:4px solid {{ status_color }};border-radius:6px;">
             <p style="margin:0;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Application Status</p>
             <p style="margin:6px 0 0;font-size:22px;font-weight:800;color:{{ status_color }};">{{ status_label }}</p>
@@ -220,7 +220,7 @@ _SLOT_SELECTION_TEMPLATE = """
           </p>
           <div style="margin:20px 0;padding:20px;background:#f5f3ff;border:1px solid #e0e7ff;border-radius:8px;">
             <p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#4338ca;text-transform:uppercase;letter-spacing:.06em;">Available Interview Slots</p>
-            {{ slots_html }}
+            {{ slots_html|safe }}
           </div>
           <div style="text-align:center;margin:28px 0;">
             <a href="{{ slot_selection_url }}"

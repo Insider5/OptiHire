@@ -23,8 +23,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
 
+<!-- Socket.IO for real-time sync (must load before main script) -->
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
 <!-- Jitsi Meet External API -->
-<script src="https://meet.jit.si/external_api.js" defer></script>
+<script src="https://meet.jit.si/external_api.js" defer onload="console.log('Jitsi script loaded');" onerror="console.error('Failed to load Jitsi script');"></script>
 
 <style>
   * { box-sizing: border-box; }
@@ -207,7 +210,7 @@
     <!-- Jitsi Video -->
     <div class="p-3 flex-shrink-0">
       <div id="jitsi-container" class="rounded-xl overflow-hidden relative"
-           style="height:260px;background:#000;border:1px solid rgba(255,255,255,0.07)">
+           style="aspect-ratio:16/9;width:100%;background:#000;border:1px solid rgba(255,255,255,0.07)">
         <div id="jitsi-placeholder" class="absolute inset-0 flex flex-col items-center justify-center">
           <div class="w-14 h-14 rounded-full flex items-center justify-center mb-3"
                style="background:rgba(124,58,237,.18)">
@@ -299,48 +302,47 @@
       </div>
     </div>
 
-    <!-- AI Interview Questions (collapsible) -->
-    {% if interview_questions %}
-    <div class="mx-3 mb-3 rounded-xl overflow-hidden flex-shrink-0"
-         style="border:1px solid rgba(255,255,255,0.07)">
-      <button onclick="togglePanel('q-list','q-arrow')"
-              class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold text-gray-300 hover:text-white transition text-left"
-              style="background:rgba(255,255,255,0.04)">
-        <span>🤖 Questions ({{ interview_questions|length }})</span>
-        <span id="q-arrow" class="text-gray-600 text-xs">▼</span>
-      </button>
-      <div id="q-list" class="px-4 pb-4 pt-2 hidden" style="background:rgba(255,255,255,0.02)">
-        {% for q in interview_questions %}
-        {% set qdata = q if q is mapping else {} %}
-        <div class="q-item">
-          <p class="text-xs font-bold mb-0.5" style="color:#a78bfa">
-            Q{{ loop.index }}{% if qdata.get('difficulty') %} · <span class="font-normal opacity-70">{{ qdata.difficulty }}</span>{% endif %}
-          </p>
-          <p class="text-xs text-gray-300 leading-relaxed">{{ qdata.get('question', q) }}</p>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- Recruiter Notes (recruiter only, collapsible) -->
-    {% if role == 'recruiter' %}
+    <!-- Candidate Resume (candidate only, shown inline) -->
+    {% if role == 'candidate' and application.get('resume_id') %}
     <div class="mx-3 mb-3 rounded-xl overflow-hidden flex-shrink-0"
          style="border:1px solid rgba(255,255,255,0.07)">
       <div class="flex items-center justify-between px-4 py-2.5"
            style="background:rgba(255,255,255,0.04)">
-        <button onclick="togglePanel('notes-body','notes-arrow')"
+        <button onclick="togglePanel('resume-body','resume-arrow')"
                 class="flex items-center gap-2 text-sm font-semibold text-gray-300 hover:text-white transition">
-          📝 My Notes
-          <span id="notes-arrow" class="text-gray-600 text-xs">▼</span>
+          📄 My Resume
+          <span id="resume-arrow" class="text-gray-600 text-xs">▼</span>
         </button>
-        <span id="notes-saved-label" class="text-xs text-gray-600">auto-saves</span>
+        <a href="{{ url_for('candidates.view_resume', resume_id=application.resume_id) }}"
+           target="_blank"
+           class="text-xs text-purple-400 hover:text-purple-300">Open Full →</a>
       </div>
-      <div id="notes-body" class="p-3 hidden" style="background:rgba(255,255,255,0.02)">
-        <textarea id="recruiter-notes" rows="5"
+      <div id="resume-body" class="p-2" style="background:rgba(255,255,255,0.02)">
+        <iframe src="{{ url_for('candidates.view_resume', resume_id=application.resume_id) }}"
+                class="w-full rounded-lg"
+                style="height:200px;border:1px solid rgba(255,255,255,0.08);background:#fff"></iframe>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Recruiter Notes (recruiter only, EXPANDED by default) -->
+    {% if role == 'recruiter' %}
+    <div class="mx-3 mb-3 rounded-xl overflow-hidden flex-shrink-0"
+         style="border:1px solid rgba(34,197,94,0.3)">
+      <div class="flex items-center justify-between px-4 py-2.5"
+           style="background:rgba(34,197,94,0.12)">
+        <button onclick="togglePanel('notes-body','notes-arrow')"
+                class="flex items-center gap-2 text-sm font-semibold text-green-300 hover:text-green-200 transition">
+          📝 My Notes
+          <span id="notes-arrow" class="text-green-400 text-xs">▼</span>
+        </button>
+        <span id="notes-saved-label" class="text-xs text-gray-500">auto-saves</span>
+      </div>
+      <div id="notes-body" class="p-3" style="background:rgba(34,197,94,0.05)">
+        <textarea id="recruiter-notes" rows="6"
                   placeholder="Type your observations here… (auto-saved every second)"
-                  class="w-full text-xs rounded-lg p-3 resize-none focus:outline-none focus:ring-1 focus:ring-purple-500"
-                  style="background:#0d1117;border:1px solid rgba(255,255,255,0.08);color:#d1d5db;font-family:inherit">{{ application.get('room_recruiter_notes', '') | e }}</textarea>
+                  class="w-full text-xs rounded-lg p-3 resize-none focus:outline-none focus:ring-1 focus:ring-green-500"
+                  style="background:#0d1117;border:1px solid rgba(34,197,94,0.2);color:#d1d5db;font-family:inherit">{{ application.get('room_recruiter_notes', '') | e }}</textarea>
       </div>
     </div>
     {% endif %}
@@ -412,19 +414,24 @@
 <div id="ended-overlay"
      class="fixed inset-0 flex items-center justify-center z-50 fade-in"
      style="background:rgba(0,0,0,0.75);backdrop-filter:blur(6px)">
-  <div class="rounded-2xl p-8 text-center max-w-sm mx-4"
+  <div class="rounded-2xl p-8 text-center max-w-md mx-4"
        style="background:#1f2937;border:1px solid rgba(255,255,255,0.1)">
     <div class="text-5xl mb-4">✅</div>
     <h2 class="text-2xl font-bold text-white mb-2">Interview Completed</h2>
     <p class="text-sm text-gray-400 mb-6">
-      The recruiter has ended the session. You'll receive
-      a notification about the outcome soon.
+      The recruiter has ended the session. Please take a moment to share your feedback about the interview experience.
     </p>
-    <a href="{{ url_for('candidates.view_application', application_id=application.id) }}"
-       class="inline-block px-6 py-3 rounded-xl text-white font-semibold transition hover:opacity-90"
-       style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
-      View Application →
-    </a>
+    <div class="flex flex-col gap-3">
+      <a href="{{ url_for('interview_room.candidate_feedback', application_id=application.id) }}"
+         class="inline-block px-6 py-3 rounded-xl text-white font-semibold transition hover:opacity-90"
+         style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
+        📝 Give Interview Feedback
+      </a>
+      <a href="{{ url_for('candidates.view_application', application_id=application.id) }}"
+         class="inline-block px-4 py-2 rounded-lg text-gray-400 hover:text-white font-medium text-sm transition">
+        Skip for now →
+      </a>
+    </div>
   </div>
 </div>
 {% endif %}
@@ -450,6 +457,36 @@ const CM_MODES = {
   sql: 'text/x-sql', typescript: 'text/typescript',
   go: 'text/x-go', rust: 'text/x-rustsrc'
 };
+
+/* ── Piston API language map (MUST be before runCode function) ── */
+const PISTON_MAP = {
+  python:     { language:'python',     version:'3.10.0'  },
+  javascript: { language:'javascript', version:'18.15.0' },
+  java:       { language:'java',       version:'11.0.6'  },
+  cpp:        { language:'c++',        version:'10.2.0'  },
+  sql:        { language:'sql',        version:'5.1.0'   },
+  typescript: { language:'typescript', version:'5.0.3'   },
+  go:         { language:'go',         version:'1.16.2'  },
+  rust:       { language:'rust',       version:'1.50.0'  }
+};
+
+/* WebSocket connection (initialize after Socket.IO loads) */
+var socket = null;
+var socketReady = false;
+
+// Initialize socket when Socket.IO is available
+if (typeof io !== 'undefined') {
+  socket = io();
+  socketReady = true;
+} else {
+  // Fallback: wait for Socket.IO to load
+  window.addEventListener('load', function() {
+    if (typeof io !== 'undefined' && !socketReady) {
+      socket = io();
+      socketReady = true;
+    }
+  });
+}
 
 /* ── Init CodeMirror ── */
 var editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
@@ -500,7 +537,82 @@ function apiPost(payload) {
   .catch(() => setSyncState('error'));
 }
 
-/* Poll server every 2 s for remote changes */
+/* ── WebSocket Connection (only if socket is loaded) ── */
+if (socket && socketReady) {
+  socket.on('connect', function() {
+    // Join interview room
+    socket.emit('join_interview', {
+      application_id: APPLICATION_ID
+    });
+    setSyncState('synced');
+  });
+
+  /* ── Handle Remote Code Updates via WebSocket ── */
+  socket.on('code_update', function(data) {
+    var timeSinceEdit = Date.now() - lastEditTime;
+    // Only update if user hasn't typed for 400ms (debounce)
+    if (timeSinceEdit > 400 && data.code !== editor.getValue()) {
+      editor.setValue(data.code);
+      lastSyncedCode = data.code;
+      setSyncState('synced');
+    }
+  });
+
+  /* ── Handle Remote Language Updates via WebSocket ── */
+  socket.on('language_update', function(data) {
+    var sel = document.getElementById('lang-select');
+    if (sel && data.language && data.language !== sel.value) {
+      sel.value = data.language;
+      editor.setOption('mode', CM_MODES[data.language] || 'python');
+      lastSyncedCode = editor.getValue();
+    }
+  });
+
+  /* ── Handle Remote Notes Updates via WebSocket ── */
+  socket.on('notes_update', function(data) {
+    var notesArea = document.getElementById('recruiter-notes');
+    if (notesArea && data.notes !== notesArea.value) {
+      notesArea.value = data.notes;
+    }
+  });
+
+  /* ── Handle Remote Code Execution Output via WebSocket ── */
+  socket.on('code_executed', function(data) {
+    // Skip if this is from our own execution
+    if (data.user === '{{ current_user.id | tojson }}') {
+      return;
+    }
+
+    // Display the executed code output
+    var stdout = data.stdout || '';
+    var stderr = data.stderr || '';
+    var exitCode = data.exit_code || 0;
+
+    if (exitCode !== 0 && stderr) {
+      setOutput('❌ [' + data.user + '] Runtime Error (exit code ' + exitCode + '):\n' + stderr, 'error');
+    } else if (stderr) {
+      setOutput('⚠ [' + data.user + '] Warning:\n' + stderr, 'info');
+    } else if (stdout) {
+      setOutput('✓ [' + data.user + '] Output:\n' + stdout, 'success');
+    } else {
+      setOutput('✓ [' + data.user + '] Code executed successfully (no output)', 'success');
+    }
+  });
+
+  /* ── Handle disconnect ── */
+  socket.on('disconnect', function() {
+    setSyncState('error');
+    console.log('WebSocket disconnected. Switching to HTTP polling.');
+  });
+
+  /* ── Handle room connection cleanup ── */
+  window.addEventListener('beforeunload', function() {
+    socket.emit('leave_interview', {
+      application_id: APPLICATION_ID
+    });
+  });
+}
+var lastServerCodeAt = '';
 setInterval(function() {
   fetch('/interview/room/' + APPLICATION_ID + '/state')
   .then(r => r.json())
@@ -508,26 +620,15 @@ setInterval(function() {
     if (data.ended && !ROOM_ENDED_INIT) {
       editor.setOption('readOnly', true);
       {% if role == 'candidate' %}
-      var ov = document.getElementById('ended-overlay');
-      if (ov) ov.style.display = 'flex';
+      // Redirect candidate to feedback form
+      window.location.href = '/interview/room/' + APPLICATION_ID + '/candidate-feedback';
       {% endif %}
-    }
-    var timeSinceEdit = Date.now() - lastEditTime;
-    if (data.code && data.code !== lastSyncedCode && timeSinceEdit > 3000) {
-      editor.setValue(data.code);
-      lastSyncedCode = data.code;
-    }
-    var sel = document.getElementById('lang-select');
-    if (data.language && sel && data.language !== sel.value && timeSinceEdit > 3000) {
-      sel.value = data.language;
-      editor.setOption('mode', CM_MODES[data.language] || 'python');
-      lastSyncedCode = data.code || lastSyncedCode;
     }
   })
   .catch(function(){});
-}, 2000);
+}, 1000);
 
-/* Debounced push on editor change */
+/* Debounced push on editor change (with WebSocket) */
 editor.on('change', function(cm, change) {
   if (change.origin === 'setValue') return;
   lastEditTime = Date.now();
@@ -535,8 +636,16 @@ editor.on('change', function(cm, change) {
   pushTimer = setTimeout(function() {
     var code = editor.getValue();
     lastSyncedCode = code;
+    // Emit via WebSocket (if available)
+    if (socket && socketReady) {
+      socket.emit('code_change', {
+        application_id: APPLICATION_ID,
+        code: code
+      });
+    }
+    // Also post to HTTP for persistence (fallback)
     apiPost({ code: code });
-  }, 800);
+  }, 400);
 });
 
 /* ── Language change ── */
@@ -544,7 +653,29 @@ var currentLang = {{ current_language | tojson }};
 function changeLang(lang) {
   currentLang = lang;
   editor.setOption('mode', CM_MODES[lang] || 'python');
-  apiPost({ language: lang });
+
+  // Insert starter code for the new language
+  var starter = STARTER_CODES[lang] || '// Write your code here\n';
+  editor.setValue(starter);
+  lastSyncedCode = starter;
+
+  // Emit via WebSocket (if available)
+  if (socket && socketReady) {
+    socket.emit('language_change', {
+      application_id: APPLICATION_ID,
+      language: lang
+    });
+    socket.emit('code_change', {
+      application_id: APPLICATION_ID,
+      code: starter
+    });
+  }
+
+  // Also post to HTTP for persistence (fallback)
+  apiPost({
+    language: lang,
+    code: starter
+  });
 }
 
 function resetCode() {
@@ -566,17 +697,6 @@ function copyCode() {
   });
 }
 
-/* ── Run code via Piston public API ── */
-const PISTON_MAP = {
-  python:     { language:'python',     version:'3.10.0'  },
-  javascript: { language:'javascript', version:'18.15.0' },
-  java:       { language:'java',       version:'15.0.2'  },
-  cpp:        { language:'c++',        version:'10.2.0'  },
-  typescript: { language:'typescript', version:'5.0.3'   },
-  go:         { language:'go',         version:'1.16.2'  },
-  rust:       { language:'rust',       version:'1.50.0'  }
-};
-
 function setOutput(text, type) {
   var el  = document.getElementById('output-text');
   var clr = { error:'#f87171', info:'#facc15', success:'#4ade80' }[type] || '#9ca3af';
@@ -590,32 +710,85 @@ function setOutput(text, type) {
 async function runCode() {
   var pInfo = PISTON_MAP[currentLang];
   if (!pInfo) {
-    setOutput('Code execution not available for this language in the browser.\nUse a local environment for SQL / other languages.', 'info');
+    setOutput('❌ Code execution not available for this language.\nSupported: Python, JavaScript, Java, C++, TypeScript, Go, Rust', 'info');
     return;
   }
-  var btn       = document.getElementById('run-btn');
+
+  var btn = document.getElementById('run-btn');
   btn.textContent = '⏳ Running…';
-  btn.disabled    = true;
-  setOutput('Running…', 'info');
+  btn.disabled = true;
+  setOutput('⏳ Running…', 'info');
+
   try {
-    var res  = await fetch('https://emkc.org/api/v2/piston/execute', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
+    var code = editor.getValue();
+    if (!code.trim()) {
+      setOutput('⚠ Please write some code first', 'info');
+      return;
+    }
+
+    console.log('Executing code via backend:', { language: pInfo.language, version: pInfo.version, codeLength: code.length });
+
+    // Call backend endpoint instead of Piston API directly
+    var res = await fetch('/interview/room/' + APPLICATION_ID + '/execute', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify({
         language: pInfo.language,
-        version:  pInfo.version,
-        files:    [{ content: editor.getValue() }]
+        version: pInfo.version,
+        code: code
       })
     });
+
+    if (!res.ok) {
+      var errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${res.status}: ${res.statusText}`);
+    }
+
     var data = await res.json();
-    var out  = ((data.run && (data.run.output || data.run.stderr)) || '(no output)').trim();
-    var err  = data.run && (data.run.code !== 0 || data.run.stderr);
-    setOutput(out, err ? 'error' : 'success');
+    console.log('Execution response:', data);
+
+    if (!data.run) {
+      var compErr = (data.compile && data.compile.stderr) || (data.compile && data.compile.output) || 'Unknown error';
+      setOutput('❌ Compilation Error:\n' + compErr, 'error');
+      return;
+    }
+
+    var stdout = data.run.stdout || '';
+    var stderr = data.run.stderr || '';
+    var exitCode = data.run.code || 0;
+
+    // Display output locally
+    if (exitCode !== 0 && stderr) {
+      setOutput('❌ Runtime Error (exit code ' + exitCode + '):\n' + stderr, 'error');
+    } else if (stderr) {
+      setOutput('⚠ Warning:\n' + stderr, 'info');
+    } else if (stdout) {
+      setOutput('✓ Output:\n' + stdout, 'success');
+    } else {
+      setOutput('✓ Code executed successfully (no output)', 'success');
+    }
+
+    // Broadcast execution to other users via WebSocket
+    if (socket && socketReady) {
+      socket.emit('code_execute', {
+        application_id: APPLICATION_ID,
+        language: currentLang,
+        code: code,
+        stdout: stdout,
+        stderr: stderr,
+        exit_code: exitCode
+      });
+    }
+
   } catch(e) {
-    setOutput('Could not reach the code runner.\nCheck your internet connection and try again.', 'error');
+    console.error('Code execution error:', e);
+    setOutput('❌ Error executing code:\n' + e.message, 'error');
   } finally {
     btn.textContent = '▶ Run';
-    btn.disabled    = false;
+    btn.disabled = false;
   }
 }
 
@@ -644,7 +817,16 @@ async function runCode() {
   ta.addEventListener('input', function() {
     clearTimeout(t);
     t = setTimeout(function() {
-      apiPost({ notes: ta.value });
+      var notes = ta.value;
+      // Emit via WebSocket (if available)
+      if (socket && socketReady) {
+        socket.emit('notes_change', {
+          application_id: APPLICATION_ID,
+          notes: notes
+        });
+      }
+      // Also post to HTTP for persistence (fallback)
+      apiPost({ notes: notes });
       label.textContent = 'Saved ✓';
       label.style.color = '#4ade80';
       setTimeout(function() { label.textContent = 'auto-saves'; label.style.color = ''; }, 2000);
@@ -671,56 +853,120 @@ function togglePanel(bodyId, arrowId) {
 
 /* ── Jitsi Video Call ── */
 var jitsiLoaded = false;
+var jitsiAttempts = 0;
+const MAX_JITSI_ATTEMPTS = 30;
+
 function initJitsi() {
-  if (jitsiLoaded || typeof JitsiMeetExternalAPI === 'undefined') {
-    if (typeof JitsiMeetExternalAPI === 'undefined') setTimeout(initJitsi, 600);
-    return;
+  var container = document.getElementById('jitsi-container');
+  if (!container) return;
+
+  // If already loaded, don't try again
+  if (jitsiLoaded) return;
+
+  // If JitsiMeetExternalAPI is not available yet, retry
+  if (typeof JitsiMeetExternalAPI === 'undefined') {
+    jitsiAttempts++;
+    if (jitsiAttempts < MAX_JITSI_ATTEMPTS) {
+      setTimeout(initJitsi, 300);
+      return;
+    } else {
+      // Give up after max attempts and show error with fallback
+      console.error('Jitsi not loaded after ' + MAX_JITSI_ATTEMPTS + ' attempts');
+      showJitsiError('Video service is taking too long to load');
+      return;
+    }
   }
+
   jitsiLoaded = true;
   var placeholder = document.getElementById('jitsi-placeholder');
   if (placeholder) placeholder.style.display = 'none';
 
-  var roomName = 'optihire-room-' + APPLICATION_ID.replace(/[^a-zA-Z0-9]/g,'');
+  var roomName = 'optihire-room-' + APPLICATION_ID.replace(/[^a-zA-Z0-9]/g, '');
+  console.log('Initializing Jitsi with room:', roomName);
+
   try {
-    new JitsiMeetExternalAPI('meet.jit.si', {
-      roomName:    roomName,
-      width:       '100%',
-      height:      '100%',
-      parentNode:  document.getElementById('jitsi-container'),
+    var api = new JitsiMeetExternalAPI('meet.jit.si', {
+      roomName: roomName,
+      width: '100%',
+      height: '100%',
+      parentNode: container,
       configOverwrite: {
-        prejoinPageEnabled:    false,
-        disableDeepLinking:    true,
-        startWithAudioMuted:   false,
-        startWithVideoMuted:   false,
-        toolbarButtons: ['microphone','camera','hangup','chat','tileview','fullscreen'],
+        prejoinPageEnabled: false,
+        disableDeepLinking: true,
+        startWithAudioMuted: false,
+        startWithVideoMuted: false,
+        toolbarButtons: ['microphone', 'camera', 'hangup', 'chat', 'tileview', 'fullscreen'],
         hideConferenceSubject: true,
         disableInviteFunctions: true,
+        resolution: 360,
+        constraints: {
+          video: {
+            height: { ideal: 360 }
+          }
+        }
       },
       interfaceConfigOverwrite: {
-        SHOW_JITSI_WATERMARK:     false,
-        SHOW_BRAND_WATERMARK:     false,
-        SHOW_POWERED_BY:          false,
-        DEFAULT_BACKGROUND:       '#0d1117',
-        MOBILE_APP_PROMO:         false,
-        TOOLBAR_ALWAYS_VISIBLE:   true,
+        SHOW_JITSI_WATERMARK: false,
+        SHOW_BRAND_WATERMARK: false,
+        SHOW_POWERED_BY: false,
+        DEFAULT_BACKGROUND: '#0d1117',
+        MOBILE_APP_PROMO: false,
+        TOOLBAR_ALWAYS_VISIBLE: true,
       },
       userInfo: { displayName: DISPLAY_NAME }
     });
+
+    // Handle events
+    api.addEventListener('readyToClose', function() {
+      console.log('Jitsi session ended');
+    });
+
+    api.addEventListener('error', function(err) {
+      console.error('Jitsi error:', err);
+    });
+
+    console.log('Jitsi initialized successfully');
+
   } catch(e) {
-    var c = document.getElementById('jitsi-container');
-    c.innerHTML = '<div class="flex flex-col items-center justify-center h-full p-4 text-center">' +
-      '<p class="text-red-400 text-sm mb-2">⚠ Video blocked by browser</p>' +
-      '<p class="text-gray-600 text-xs">Try opening the room in a different browser, or</p>' +
-      '<a href="https://meet.jit.si/' + roomName + '" target="_blank" ' +
-         'class="mt-2 text-purple-400 underline text-xs">Open video in new tab →</a>' +
-      '</div>';
+    console.error('Jitsi initialization error:', e);
+    showJitsiError(e.message);
   }
 }
+
+function showJitsiError(message) {
+  var container = document.getElementById('jitsi-container');
+  if (!container) return;
+
+  var roomName = 'optihire-room-' + APPLICATION_ID.replace(/[^a-zA-Z0-9]/g, '');
+
+  container.innerHTML =
+    '<div class="flex flex-col items-center justify-center h-full p-6 text-center gap-4">' +
+    '<div class="text-4xl">📹</div>' +
+    '<p class="text-white font-semibold">Video Service Unavailable</p>' +
+    '<p class="text-gray-400 text-sm">' + message + '</p>' +
+    '<p class="text-gray-500 text-xs max-w-xs">You can still conduct the interview using the code editor. Click the button below to open video in a separate window.</p>' +
+    '<a href="https://meet.jit.si/' + roomName + '" target="_blank" rel="noopener noreferrer" ' +
+    'class="inline-block mt-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold text-sm transition">' +
+    '🔗 Open Video in New Tab</a>' +
+    '</div>';
+}
+
 if (!ROOM_ENDED_INIT) {
-  window.addEventListener('load', function() { setTimeout(initJitsi, 800); });
+  // Try to init on DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(initJitsi, 500);
+    });
+  } else {
+    setTimeout(initJitsi, 500);
+  }
+  // Also try on window load
+  window.addEventListener('load', function() {
+    setTimeout(initJitsi, 1000);
+  });
 } else {
   var c = document.getElementById('jitsi-container');
-  if (c) c.innerHTML = '<div class="flex items-center justify-center h-full text-gray-600 text-sm">Session ended</div>';
+  if (c) c.innerHTML = '<div class="flex items-center justify-center h-full text-gray-600 text-sm">Interview session has ended</div>';
 }
 </script>
 </body>

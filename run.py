@@ -3,7 +3,7 @@ Main entry point for OptiHire Flask application
 File-based storage version (no database)
 """
 import os
-from app import create_app
+from app import create_app, socketio
 from app.user import User
 from app.storage import get_storage
 import json
@@ -95,4 +95,4 @@ def create_sample_data():
     print(f"   Jobs created: {job1['id']}, {job2['id']}, {job3['id']}")
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)

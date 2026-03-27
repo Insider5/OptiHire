@@ -15,19 +15,30 @@
             <p class="text-gray-500 mt-1">{{ application.job.company }} {% if application.job.location %}· {{ application.job.location }}{% endif %}</p>
             {% endif %}
         </div>
-        <!-- Status Badge -->
-        <span class="px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wide
-            {% if application.status == 'hired' %}bg-green-100 text-green-700 border border-green-200
-            {% elif application.status == 'shortlisted' %}bg-blue-100 text-blue-700 border border-blue-200
-            {% elif application.status == 'interview' %}bg-purple-100 text-purple-700 border border-purple-200
-            {% elif application.status == 'rejected' %}bg-red-100 text-red-600 border border-red-200
-            {% else %}bg-yellow-100 text-yellow-700 border border-yellow-200{% endif %}">
-            {% if application.status == 'hired' %}🎉 Hired
-            {% elif application.status == 'shortlisted' %}⭐ Shortlisted
-            {% elif application.status == 'interview' %}📞 Interview
-            {% elif application.status == 'rejected' %}❌ Not Selected
-            {% else %}⏳ Pending{% endif %}
-        </span>
+        <div class="flex items-center gap-3">
+            {% if current_user.user_type == 'candidate' %}
+            <a href="{{ url_for('candidates.edit_application', application_id=application.id) }}"
+               class="px-4 py-2 border-2 border-primary-500 text-primary-600 rounded-lg font-semibold hover:bg-primary-50 transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                Edit
+            </a>
+            {% endif %}
+            <!-- Status Badge -->
+            <span class="px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wide
+                {% if application.status == 'hired' %}bg-green-100 text-green-700 border border-green-200
+                {% elif application.status == 'shortlisted' %}bg-blue-100 text-blue-700 border border-blue-200
+                {% elif application.status == 'interview' %}bg-purple-100 text-purple-700 border border-purple-200
+                {% elif application.status == 'rejected' %}bg-red-100 text-red-600 border border-red-200
+                {% else %}bg-yellow-100 text-yellow-700 border border-yellow-200{% endif %}">
+                {% if application.status == 'hired' %}🎉 Hired
+                {% elif application.status == 'shortlisted' %}⭐ Shortlisted
+                {% elif application.status == 'interview' %}📞 Interview
+                {% elif application.status == 'rejected' %}❌ Not Selected
+                {% else %}⏳ Pending{% endif %}
+            </span>
+        </div>
     </div>
 
     <!-- ── AI Match Score Hero ──────────────────────────────────── -->
@@ -229,37 +240,6 @@
     })();
     </script>
 
-    <!-- ── AI Interview Questions ──────────────────────────────── -->
-    {% if application.interview_questions %}
-    <div class="bg-white rounded-2xl shadow border border-gray-100 p-6 mb-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-5">🤖 AI-Generated Interview Questions</h2>
-        <div class="space-y-4">
-            {% for q in application.interview_questions %}
-            {% set qdata = q if q is mapping else {} %}
-            <div class="flex gap-4 p-4 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50 transition-colors">
-                <div class="flex-shrink-0 w-8 h-8 gradient-primary rounded-lg flex items-center justify-center text-white font-bold text-sm">{{ loop.index }}</div>
-                <div class="flex-1">
-                    <p class="text-gray-800 font-medium leading-relaxed">{{ qdata.get('question', q) }}</p>
-                    <div class="flex gap-2 mt-2">
-                        {% if qdata.get('type') %}
-                        <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{{ qdata.type }}</span>
-                        {% endif %}
-                        {% if qdata.get('difficulty') %}
-                        <span class="text-xs px-2 py-0.5 rounded-full font-medium
-                            {% if qdata.difficulty == 'easy' %}bg-green-100 text-green-700
-                            {% elif qdata.difficulty == 'hard' %}bg-red-100 text-red-700
-                            {% else %}bg-yellow-100 text-yellow-700{% endif %}">
-                            {{ qdata.difficulty | capitalize }}
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
     <!-- ── Interview Slot Status (status=interview, both roles) ───── -->
     {% if application.status == 'interview' %}
 
@@ -323,6 +303,26 @@
                     📝 {{ 'Edit' if application.get('interview_overall_score') else 'Submit' }} Feedback
                 </a>
             </div>
+            {% elif current_user.user_type == 'candidate' %}
+            <div class="flex gap-2 flex-shrink-0">
+                <a href="{{ url_for('interview_room.room', application_id=application.id) }}"
+                   class="px-4 py-2 rounded-xl text-sm font-semibold transition"
+                   style="background:rgba(124,58,237,.12);color:#7c3aed;border:1px solid rgba(124,58,237,.25)">
+                    View Room
+                </a>
+                {% if not application.get('candidate_feedback_submitted') %}
+                <a href="{{ url_for('interview_room.candidate_feedback', application_id=application.id) }}"
+                   class="px-4 py-2 rounded-xl text-sm font-semibold text-white transition hover:opacity-90"
+                   style="background:linear-gradient(135deg,#22c55e,#10b981)">
+                    📝 Give Feedback
+                </a>
+                {% else %}
+                <span class="px-4 py-2 rounded-xl text-sm font-semibold"
+                      style="background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25)">
+                    ✓ Feedback Submitted
+                </span>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
     </div>
@@ -378,8 +378,8 @@
 
     {% endif %}{# end status == interview #}
 
-    {# Slot-picker modal — recruiter only, shown until candidate confirms #}
-    {% if current_user.user_type == 'recruiter' and application.status == 'interview' and not application.get('chosen_slot') %}
+    {# Slot-picker modal — recruiter only, available when slot not yet confirmed #}
+    {% if current_user.user_type == 'recruiter' and not application.get('chosen_slot') %}
     <div id="schedule-interview-modal"
          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden"
          onclick="if(event.target===this) closeScheduleModal()">
@@ -582,6 +582,27 @@
     };
 
     function openStatusModal(status, icon, candidateName, jobTitle) {
+        // For "interview" status, open the slot scheduling modal instead
+        if (status === 'interview') {
+            var scheduleModal = document.getElementById('schedule-interview-modal');
+            if (scheduleModal) {
+                // Directly open the schedule modal (inline logic to avoid function dependency)
+                const today = new Date().toISOString().split('T')[0];
+                const defaultTimes = ['10:00', '14:00', '16:00'];
+                document.querySelectorAll('[name^="slot_"][name$="_date"]').forEach(function(el) {
+                    el.min = today;
+                    if (!el.value) el.value = today;
+                });
+                document.querySelectorAll('[name^="slot_"][name$="_time"]').forEach(function(el, i) {
+                    if (!el.value) el.value = defaultTimes[i] || '10:00';
+                });
+                scheduleModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                return;
+            }
+            // If modal doesn't exist (e.g., slot already chosen), show regular confirmation
+        }
+
         const styles = STATUS_STYLES[status] || STATUS_STYLES['pending'];
 
         document.getElementById('modal-status-icon').textContent    = icon;

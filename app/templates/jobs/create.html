@@ -86,6 +86,15 @@
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 placeholder="e.g., $100,000 - $150,000 per year">
                         </div>
+
+                        <div>
+                            <label for="deadline" class="block text-sm font-bold text-gray-900 mb-2">
+                                Application Deadline
+                            </label>
+                            <input type="date" name="deadline" id="deadline"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <p class="text-sm text-gray-500 mt-1">Set a deadline for applications (optional)</p>
+                        </div>
                     </div>
                 </div>
 
@@ -123,6 +132,16 @@
                                 placeholder="e.g., Python, React, AWS, Machine Learning (comma-separated)">
                             <p class="text-sm text-gray-500 mt-2">Enter skills separated by commas - these will be used
                                 for AI matching</p>
+                        </div>
+
+                        <div>
+                            <label for="custom_questions" class="block text-sm font-bold text-gray-900 mb-2">
+                                Custom Application Questions
+                            </label>
+                            <textarea name="custom_questions" id="custom_questions" rows="4"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                placeholder="Enter custom questions for applicants, one per line. For example:&#10;- Why are you interested in this position?&#10;- What is your experience with remote work?&#10;- Tell us about a challenging project you've worked on."></textarea>
+                            <p class="text-sm text-gray-500 mt-2">Optional: Add specific questions you want candidates to answer (one question per line)</p>
                         </div>
                     </div>
                 </div>

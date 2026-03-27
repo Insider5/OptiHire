@@ -223,17 +223,71 @@ class ResumeParser:
         return certifications
     
     def extract_name(self, text: str) -> str:
-        """Extract candidate name (typically first line)"""
-        doc = self.nlp(text)
-        
-        # Try to find PERSON entities
+        """Extract candidate name (typically first few lines of resume)"""
+        # Common technical terms that should NOT be considered names
+        tech_terms = {
+            'java', 'python', 'javascript', 'typescript', 'react', 'angular', 'vue',
+            'node', 'express', 'django', 'flask', 'spring', 'docker', 'kubernetes',
+            'aws', 'azure', 'gcp', 'linux', 'git', 'github', 'sql', 'mongodb',
+            'redis', 'tensorflow', 'pytorch', 'keras', 'machine', 'learning',
+            'deep', 'data', 'science', 'engineer', 'developer', 'software',
+            'senior', 'junior', 'lead', 'manager', 'analyst', 'architect',
+            'full', 'stack', 'frontend', 'backend', 'devops', 'resume', 'cv',
+            'curriculum', 'vitae', 'profile', 'summary', 'objective', 'experience',
+            'education', 'skills', 'projects', 'contact', 'phone', 'email',
+            'address', 'linkedin', 'github', 'portfolio', 'website', 'html', 'css',
+            'c++', 'c#', 'ruby', 'go', 'rust', 'swift', 'kotlin', 'scala', 'php',
+            'mysql', 'postgresql', 'oracle', 'firebase', 'graphql', 'rest', 'api',
+            'agile', 'scrum', 'jira', 'jenkins', 'ci', 'cd', 'terraform', 'ansible'
+        }
+
+        # Get first 10 lines where name typically appears
+        lines = [line.strip() for line in text.split('\n') if line.strip()][:10]
+        first_section = '\n'.join(lines[:5])  # Focus on first 5 lines for NER
+
+        doc = self.nlp(first_section)
+
+        # Try to find PERSON entities in first few lines
         for ent in doc.ents:
             if ent.label_ == "PERSON":
-                return ent.text
-        
-        # Fallback: first line
-        lines = [line.strip() for line in text.split('\n') if line.strip()]
-        return lines[0] if lines else "Unknown"
+                name_candidate = ent.text.strip()
+                # Filter out technical terms and single words that might be misidentified
+                words = name_candidate.lower().split()
+                # Check if any word is a tech term
+                if not any(word in tech_terms for word in words):
+                    # Valid name should have at least 2 characters and not be all uppercase single word
+                    if len(name_candidate) >= 2:
+                        # Avoid single uppercase words like "JAVA", "PYTHON"
+                        if not (len(words) == 1 and name_candidate.isupper()):
+                            return name_candidate
+
+        # Fallback: Look for name pattern in first few lines
+        # Names are typically on their own line, proper case, 2-4 words
+        for line in lines[:5]:
+            # Skip lines with common non-name indicators
+            line_lower = line.lower()
+            if any(indicator in line_lower for indicator in ['@', 'http', 'www', 'phone', 'email', 'address', 'resume', 'cv', 'objective', 'summary', '|', ':', '+91', '+1']):
+                continue
+
+            # Skip lines that are too long (likely not a name)
+            if len(line) > 50:
+                continue
+
+            # Skip lines that are all tech terms
+            words = line.split()
+            if len(words) >= 2 and len(words) <= 4:
+                # Check if looks like a name (proper case, no tech terms)
+                if not any(word.lower() in tech_terms for word in words):
+                    # Should have proper capitalization
+                    if any(word[0].isupper() for word in words if word):
+                        return line
+
+        # Last fallback: first non-empty line that's not a tech term
+        for line in lines[:3]:
+            if line.lower() not in tech_terms and len(line) > 1 and len(line) < 50:
+                return line
+
+        return "Unknown"
     
     def parse_resume(self, file_path: str) -> Dict[str, Any]:
         """

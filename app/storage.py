@@ -164,6 +164,28 @@ class FileStorage:
         """Soft delete job (mark as inactive)"""
         return self.update_job(job_id, {'is_active': False})
 
+    def hard_delete_job(self, job_id: str) -> bool:
+        """Permanently delete job from storage"""
+        with _file_lock:
+            jobs = self._read_file(self.jobs_file)
+            original_count = len(jobs)
+            jobs = [j for j in jobs if j.get('id') != job_id]
+            if len(jobs) < original_count:
+                self._write_file(self.jobs_file, jobs)
+                return True
+        return False
+
+    def delete_applications_by_job(self, job_id: str) -> int:
+        """Delete all applications for a specific job. Returns count of deleted applications."""
+        with _file_lock:
+            applications = self._read_file(self.applications_file)
+            original_count = len(applications)
+            applications = [a for a in applications if a.get('job_id') != job_id]
+            deleted_count = original_count - len(applications)
+            if deleted_count > 0:
+                self._write_file(self.applications_file, applications)
+            return deleted_count
+
     # ─────────────────────────────────────────
     # Resume operations
     # ─────────────────────────────────────────
@@ -244,6 +266,17 @@ class FileStorage:
                     applications[i]['updated_at'] = datetime.now().isoformat()
                     self._write_file(self.applications_file, applications)
                     return True
+        return False
+
+    def delete_application(self, app_id: str) -> bool:
+        """Delete application by ID"""
+        with _file_lock:
+            applications = self._read_file(self.applications_file)
+            original_count = len(applications)
+            applications = [app for app in applications if app.get('id') != app_id]
+            if len(applications) < original_count:
+                self._write_file(self.applications_file, applications)
+                return True
         return False
 
     # ─────────────────────────────────────────

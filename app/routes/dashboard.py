@@ -11,6 +11,49 @@ from app.services.calendar_service import schedule_interview as calendar_schedul
 
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
 
+
+def _is_interview_completed(chosen_slot: str, room_ended_at: str = None) -> bool:
+    """
+    Check if an interview scheduled time has passed.
+    Returns True if current time is past the scheduled interview time.
+    """
+    if not chosen_slot or room_ended_at:
+        # Already marked as ended or no scheduled time
+        return bool(room_ended_at)
+
+    try:
+        # Parse the chosen slot format: "30 Mar 2026 at 02:30 PM IST"
+        slot_clean = chosen_slot.replace(' IST', '').strip()
+        scheduled_dt = datetime.strptime(slot_clean, '%d %b %Y at %I:%M %p')
+        current_dt = datetime.now()
+
+        # Interview is completed if current time is past scheduled time
+        return current_dt > scheduled_dt
+    except (ValueError, AttributeError):
+        return room_ended_at is not None
+
+
+def _auto_mark_completed_interviews(storage, applications: list) -> None:
+    """
+    Check all interview applications and auto-mark them as completed if time has passed.
+    Updates storage if interview time has passed but wasn't marked as ended.
+    """
+    for app in applications:
+        if app.get('status') != 'interview':
+            continue
+
+        chosen_slot = app.get('chosen_slot')
+        room_ended_at = app.get('room_ended_at')
+
+        if chosen_slot and not room_ended_at:
+            if _is_interview_completed(chosen_slot, room_ended_at):
+                # Auto-mark as completed
+                storage.update_application(app['id'], {
+                    'room_ended_at': datetime.now().isoformat(),
+                    'auto_completed_at': datetime.now().isoformat()
+                })
+                current_app.logger.info(f"Auto-marked interview {app['id']} as completed")
+
 @bp.route('/')
 @login_required
 def index():
@@ -42,6 +85,14 @@ def recruiter_dashboard():
     
     # Get all applications for recruiter's jobs
     job_ids = [job['id'] for job in jobs]
+    all_applications = []
+    for job_id in job_ids:
+        apps = storage.get_applications_by_job(job_id)
+        all_applications.extend(apps)
+
+    # Auto-mark interviews that have passed as completed
+    _auto_mark_completed_interviews(storage, all_applications)
+    # Refresh applications after potential updates
     all_applications = []
     for job_id in job_ids:
         apps = storage.get_applications_by_job(job_id)
@@ -108,6 +159,8 @@ def recruiter_dashboard():
                 'resume_id':       app.get('resume_id', ''),
                 'skills':          skills,
                 'exp_years':       exp_years,
+                'is_completed':    bool(app.get('room_ended_at')),  # Mark if interview has been conducted
+                'completed_at':    app.get('room_ended_at', ''),
             })
     interview_events.sort(key=lambda x: (x['date'], x['time']))
 
@@ -128,6 +181,11 @@ def candidate_dashboard():
     storage = get_storage()
     
     # Get candidate's applications
+    applications = storage.get_applications_by_candidate(current_user.id)
+
+    # Auto-mark interviews that have passed as completed
+    _auto_mark_completed_interviews(storage, applications)
+    # Refresh applications after potential updates
     applications = storage.get_applications_by_candidate(current_user.id)
     
     # Sort by applied_at descending
@@ -228,13 +286,42 @@ def candidate_dashboard():
         'avg_score': avg_score,
         'total_resumes': len(resumes)
     }
-    
+
+    # ── Interview Calendar data for candidate ───────────────────────────
+    from datetime import datetime as _dt
+    interview_events = []
+    for app in applications:
+        chosen = app.get('chosen_slot')
+        if chosen and app.get('status') == 'interview':
+            try:
+                slot_clean = chosen.replace(' IST', '').strip()
+                dt = _dt.strptime(slot_clean, '%d %b %Y at %I:%M %p')
+                date_key = dt.strftime('%Y-%m-%d')
+                time_str = dt.strftime('%I:%M %p')
+            except ValueError:
+                continue
+            job_item = storage.get_job_by_id(app.get('job_id', ''))
+            interview_events.append({
+                'date': date_key,
+                'time': time_str,
+                'datetime_obj': dt,
+                'job_title': job_item.get('title', '') if job_item else '',
+                'company': job_item.get('company', '') if job_item else '',
+                'application_id': app.get('id', ''),
+                'interview_duration': app.get('interview_duration', 60),
+                'interview_notes': app.get('interview_notes', ''),
+                'is_completed': bool(app.get('room_ended_at')),  # Mark if interview has been conducted
+                'completed_at': app.get('room_ended_at', ''),
+            })
+    interview_events.sort(key=lambda x: x.get('datetime_obj', _dt.now()))
+
     return render_template('dashboard/candidate.html',
                          applications=applications,
                          resumes=resumes,
                          stats=stats,
                          notifications=notifications,
-                         recommended_jobs=recommended_jobs)
+                         recommended_jobs=recommended_jobs,
+                         interview_events=interview_events)
 
 @bp.route('/job/<job_id>/applications')
 @login_required
@@ -300,10 +387,10 @@ def update_application_status(application_id):
     # Update status
     storage.update_application(application_id, {'status': new_status})
 
-    # Send email notification to candidate
+    # Send email notification to candidate (skip for 'interview' - email sent via slot scheduling)
     candidate = storage.get_user_by_id(application['candidate_id'])
     email_sent = False
-    if candidate:
+    if candidate and new_status != 'interview':
         try:
             email_sent = send_status_email(
                 candidate_email=candidate.get('email', ''),
@@ -316,15 +403,15 @@ def update_application_status(application_id):
         except Exception as e:
             current_app.logger.error(f'Email notification failed: {e}')
             email_sent = False
-    
+
     # Create notification for candidate
     status_messages = {
         'shortlisted': 'Congratulations! You have been shortlisted.',
         'rejected': 'Thank you for applying. Unfortunately, we have decided to move forward with other candidates.',
-        'interview': 'You have been selected for an interview!',
+        'interview': 'You have been selected for an interview! The recruiter will send you available time slots shortly.',
         'hired': 'Congratulations! You have been selected for the position!'
     }
-    
+
     if new_status in status_messages:
         storage.create_notification({
             'user_id': application['candidate_id'],
@@ -333,11 +420,14 @@ def update_application_status(application_id):
             'message': status_messages[new_status],
             'notification_type': 'success' if new_status in ['shortlisted', 'interview', 'hired'] else 'warning'
         })
-    
-    if email_sent:
+
+    # Special message for interview status
+    if new_status == 'interview':
+        flash(f'Status updated to Interview. Now send interview slot options to the candidate.', 'info')
+    elif email_sent:
         flash(f'Status updated to {new_status}. Email notification sent to candidate.', 'success')
     else:
-        flash(f'Status updated to {new_status}. ⚠️ Email could not be sent — check SMTP settings in .env.', 'warning')
+        flash(f'Status updated to {new_status}.', 'success')
     return redirect(url_for('candidates.view_application', application_id=application_id))
 
 
@@ -394,8 +484,9 @@ def schedule_interview(application_id):
     # Generate HMAC token for the candidate's slot-selection URL
     token = make_slot_token(application_id, current_app.config['SECRET_KEY'])
 
-    # Persist slots on the application; clear any previous choice
+    # Persist slots on the application; set status to interview and clear any previous choice
     storage.update_application(application_id, {
+        'status':             'interview',
         'interview_slots':    slots,
         'interview_duration': duration_minutes,
         'interview_notes':    notes,
@@ -420,20 +511,20 @@ def schedule_interview(application_id):
     storage.create_notification({
         'user_id':           application['candidate_id'],
         'application_id':    application_id,
-        'title':             f'Interview Slot Options — {job["title"]}',
-        'message':           f'The recruiter has offered {len(slots)} interview slot(s). Check your email to pick your preferred time.',
-        'notification_type': 'info',
+        'title':             f'Interview Invitation — {job["title"]}',
+        'message':           f'Great news! You have been selected for an interview. The recruiter has offered {len(slots)} time slot(s). Check your email to pick your preferred time.',
+        'notification_type': 'success',
     })
 
     if sent:
         flash(
-            f'✅ Interview slot options sent to {candidate.get("email")}. '
+            f'✅ Status changed to Interview & slot options sent to {candidate.get("email")}. '
             f'The candidate will choose their preferred slot.',
             'success'
         )
     else:
         flash(
-            f'Slot options saved. ⚠️ Email could not be sent — check SMTP settings in .env.',
+            f'Status changed to Interview. Slot options saved. ⚠️ Email could not be sent — check SMTP settings in .env.',
             'warning'
         )
     return redirect(url_for('candidates.view_application', application_id=application_id))

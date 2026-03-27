@@ -45,6 +45,116 @@
         .gradient-primary{ background: linear-gradient(135deg, var(--p600) 0%, var(--p800) 100%); }
         .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
         .hover-lift:hover { transform: translateY(-4px); box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+
+        /* ── Nav link animations ─────────────────────────────────── */
+        .nav-link {
+            position: relative;
+            padding: 0.5rem 0;
+            font-weight: 500;
+            color: #4b5563;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--p500), var(--p600));
+            transition: width 0.3s ease, left 0.3s ease;
+            border-radius: 2px;
+        }
+        .nav-link:hover {
+            color: var(--p600);
+            transform: translateY(-1px);
+        }
+        .nav-link:hover::after {
+            width: 100%;
+            left: 0;
+        }
+        .nav-link:active {
+            transform: scale(0.97);
+        }
+
+        /* Nav button animations */
+        .nav-btn {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .nav-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
+        }
+        .nav-btn:hover::before {
+            width: 200%;
+            height: 200%;
+        }
+        .nav-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(112, 38, 255, 0.3);
+        }
+        .nav-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        /* Icon button animations */
+        .nav-icon-btn {
+            transition: all 0.2s ease;
+        }
+        .nav-icon-btn:hover {
+            background: rgba(112, 38, 255, 0.08);
+            transform: scale(1.1);
+        }
+        .nav-icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Mobile menu link animations */
+        .mobile-link {
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .mobile-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background: linear-gradient(180deg, var(--p500), var(--p600));
+            transform: scaleY(0);
+            transition: transform 0.2s ease;
+        }
+        .mobile-link:hover::before {
+            transform: scaleY(1);
+        }
+        .mobile-link:hover {
+            padding-left: 1.25rem;
+            background: rgba(112, 38, 255, 0.05);
+        }
+        .mobile-link:active {
+            transform: scale(0.98);
+        }
+
+        /* Notification badge pulse */
+        @keyframes badge-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        .notif-badge {
+            animation: badge-pulse 2s ease-in-out infinite;
+        }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: var(--p500); border-radius: 4px; }
@@ -374,12 +484,27 @@
 
                 <!-- Desktop nav links -->
                 <div class="hidden md:flex items-center space-x-6">
-                    <a href="{{ url_for('jobs.list_jobs') }}" class="text-gray-600 hover:text-primary-600 font-medium">Browse Jobs</a>
-                    <a href="{{ url_for('main.how_it_works') }}" class="text-gray-600 hover:text-primary-600 font-medium">How It Works</a>
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard.index') }}" class="nav-link">Dashboard</a>
+                    {% endif %}
+
+                    <a href="{{ url_for('jobs.list_jobs') }}" class="nav-link">Browse Jobs</a>
+
+                    {% if current_user.is_authenticated and current_user.user_type == 'candidate' %}
+                    <a href="{{ url_for('candidates.my_applications') }}" class="nav-link">My Applications</a>
+                    <a href="{{ url_for('profile.candidate_profile') }}" class="nav-link">My Profile</a>
+                    {% elif not current_user.is_authenticated %}
+                    <a href="{{ url_for('main.how_it_works') }}" class="nav-link">How It Works</a>
+                    {% endif %}
+
+                    {% if current_user.is_authenticated and current_user.user_type == 'recruiter' %}
+                    <a href="{{ url_for('jobs.create_job') }}" class="nav-link">Post Job</a>
+                    <a href="{{ url_for('jobs.my_postings') }}" class="nav-link">My Job Postings</a>
+                    {% endif %}
 
                     <!-- Theme Toggle -->
                     <button id="theme-toggle" onclick="toggleTheme()"
-                            class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary-600 transition"
+                            class="nav-icon-btn w-9 h-9 flex items-center justify-center rounded-full text-gray-500"
                             aria-label="Toggle light / dark mode" title="Toggle light / dark mode">
                         <svg id="icon-moon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -392,23 +517,18 @@
                     </button>
 
                     {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('dashboard.index') }}" class="text-gray-600 hover:text-primary-600 font-medium">Dashboard</a>
-
-                    {% if current_user.user_type == 'recruiter' %}
-                    <a href="{{ url_for('jobs.create_job') }}" class="text-gray-600 hover:text-primary-600 font-medium">Post Job</a>
-                    {% endif %}
 
                     <!-- Notification Bell -->
                     <div class="relative">
                         <a href="{{ url_for('profile.notifications') }}" id="notif-btn"
-                           class="relative flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100 text-gray-600 hover:text-primary-600">
+                           class="nav-icon-btn relative flex items-center justify-center w-9 h-9 rounded-full text-gray-600">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                             </svg>
                             {% set unread = current_user | get_unread_count %}
                             {% if unread and unread > 0 %}
-                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                            <span class="notif-badge absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                                 {{ unread if unread < 10 else '9+' }}
                             </span>
                             {% endif %}
@@ -459,8 +579,8 @@
 
                     {% else %}
                     <!-- Guest links -->
-                    <a href="{{ url_for('auth.login') }}" class="text-gray-600 hover:text-primary-600 font-medium">Login</a>
-                    <a href="{{ url_for('auth.register') }}" class="gradient-primary text-white px-5 py-2 rounded-lg font-medium shadow hover:shadow-md">
+                    <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
+                    <a href="{{ url_for('auth.register') }}" class="nav-btn gradient-primary text-white px-5 py-2 rounded-lg font-medium shadow">
                         Sign Up Free
                     </a>
                     {% endif %}
@@ -497,16 +617,26 @@
                         <span id="mob-theme-label">Dark Mode</span>
                     </button>
                 </div>
-                <a href="{{ url_for('jobs.list_jobs') }}" class="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">Browse Jobs</a>
-                <a href="{{ url_for('main.how_it_works') }}" class="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">How It Works</a>
                 {% if current_user.is_authenticated %}
-                <a href="{{ url_for('dashboard.index') }}" class="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">Dashboard</a>
-                <a href="{{ url_for('profile.edit') }}" class="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">Edit Profile</a>
-                <a href="{{ url_for('profile.notifications') }}" class="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">Notifications</a>
-                <a href="{{ url_for('auth.logout') }}" class="block px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 font-medium">Sign Out</a>
+                <a href="{{ url_for('dashboard.index') }}" class="mobile-link block px-3 py-2 rounded-lg text-gray-700 font-medium">Dashboard</a>
+                {% endif %}
+                <a href="{{ url_for('jobs.list_jobs') }}" class="mobile-link block px-3 py-2 rounded-lg text-gray-700 font-medium">Browse Jobs</a>
+                {% if current_user.is_authenticated and current_user.user_type == 'candidate' %}
+                <a href="{{ url_for('candidates.my_applications') }}" class="mobile-link block px-3 py-2 rounded-lg text-gray-700 font-medium">My Applications</a>
+                <a href="{{ url_for('profile.candidate_profile') }}" class="mobile-link block px-3 py-2 rounded-lg text-gray-700 font-medium">My Profile</a>
+                {% elif current_user.is_authenticated and current_user.user_type == 'recruiter' %}
+                <a href="{{ url_for('jobs.create_job') }}" class="mobile-link block px-3 py-2 rounded-lg text-gray-700 font-medium">Post Job</a>
+                <a href="{{ url_for('jobs.my_postings') }}" class="mobile-link block px-3 py-2 rounded-lg text-gray-700 font-medium">My Job Postings</a>
+                {% elif not current_user.is_authenticated %}
+                <a href="{{ url_for('main.how_it_works') }}" class="mobile-link block px-3 py-2 rounded-lg text-gray-700 font-medium">How It Works</a>
+                {% endif %}
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('profile.edit') }}" class="mobile-link block px-3 py-2 rounded-lg text-gray-700 font-medium">Edit Profile</a>
+                <a href="{{ url_for('profile.notifications') }}" class="mobile-link block px-3 py-2 rounded-lg text-gray-700 font-medium">Notifications</a>
+                <a href="{{ url_for('auth.logout') }}" class="mobile-link block px-3 py-2 rounded-lg text-red-600 font-medium">Sign Out</a>
                 {% else %}
-                <a href="{{ url_for('auth.login') }}" class="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">Login</a>
-                <a href="{{ url_for('auth.register') }}" class="block px-3 py-2 rounded-lg bg-primary-600 text-white font-medium text-center">Sign Up Free</a>
+                <a href="{{ url_for('auth.login') }}" class="mobile-link block px-3 py-2 rounded-lg text-gray-700 font-medium">Login</a>
+                <a href="{{ url_for('auth.register') }}" class="nav-btn block px-3 py-2 rounded-lg bg-primary-600 text-white font-medium text-center">Sign Up Free</a>
                 {% endif %}
             </div>
         </div>

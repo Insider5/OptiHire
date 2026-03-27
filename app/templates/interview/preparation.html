@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% block title %}Interview Prep - {{ job.title }} | OptiHire{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-r from-purple-600 to-indigo-800 text-white py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center gap-3 mb-2">
+            <a href="{{ url_for('jobs.view_job', job_id=job.id) }}" class="text-white/70 hover:text-white">
+                &larr; Back to Job
+            </a>
+        </div>
+        <h1 class="text-3xl font-bold flex items-center gap-3">
+            <span class="text-4xl">🎯</span>
+            Interview Preparation
+        </h1>
+        <p class="text-lg text-purple-100 mt-2">{{ job.title }} at {{ job.company }}</p>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column: Job Info & Insights -->
+        <div class="space-y-6">
+            <!-- Job Summary Card -->
+            <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">💼</span> Job Details
+                </h2>
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="text-gray-500">Company:</span>
+                        <span class="font-medium text-gray-900">{{ job.company }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-gray-500">Location:</span>
+                        <span class="font-medium text-gray-900">{{ job.location or 'Not specified' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-gray-500">Experience:</span>
+                        <span class="font-medium text-gray-900">{{ job.experience_level or 'Not specified' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-gray-500">Type:</span>
+                        <span class="font-medium text-gray-900">{{ job.job_type or 'Full-time' }}</span>
+                    </div>
+                </div>
+
+                {% if not has_applied %}
+                <a href="{{ url_for('candidates.apply_job', job_id=job.id) }}"
+                   class="mt-4 block text-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium">
+                    Apply for this Job
+                </a>
+                {% else %}
+                <div class="mt-4 px-4 py-2 bg-green-100 text-green-700 rounded-lg text-center text-sm font-medium">
+                    You've applied for this job
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Key Skills -->
+            <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">🛠️</span> Required Skills
+                </h2>
+                {% set skills = job.skills_required %}
+                {% if skills is string %}
+                    {% set skills = skills | from_json_or_empty %}
+                {% endif %}
+                {% if skills %}
+                <div class="flex flex-wrap gap-2">
+                    {% for skill in skills %}
+                    <span class="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm font-medium border border-purple-200">
+                        {{ skill }}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-sm">No specific skills listed</p>
+                {% endif %}
+            </div>
+
+            <!-- Preparation Tips -->
+            <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">💡</span> Preparation Tips
+                </h2>
+                {% if insights and insights.preparation_tips %}
+                <ul class="space-y-2">
+                    {% for tip in insights.preparation_tips %}
+                    <li class="flex items-start gap-2 text-sm text-gray-700">
+                        <span class="text-green-500 mt-0.5">✓</span>
+                        {{ tip }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li class="flex items-start gap-2"><span class="text-green-500">✓</span> Research the company</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500">✓</span> Review job requirements</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500">✓</span> Prepare STAR stories</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500">✓</span> Practice common questions</li>
+                </ul>
+                {% endif %}
+            </div>
+
+            <!-- Questions to Ask -->
+            <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">❓</span> Questions to Ask
+                </h2>
+                {% if insights and insights.questions_to_ask %}
+                <ul class="space-y-2">
+                    {% for q in insights.questions_to_ask %}
+                    <li class="flex items-start gap-2 text-sm text-gray-700">
+                        <span class="text-blue-500 mt-0.5">•</span>
+                        {{ q }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li class="flex items-start gap-2"><span class="text-blue-500">•</span> What does success look like in this role?</li>
+                    <li class="flex items-start gap-2"><span class="text-blue-500">•</span> What's the team culture like?</li>
+                    <li class="flex items-start gap-2"><span class="text-blue-500">•</span> What are the growth opportunities?</li>
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Column: Chat Interface -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-lg border border-gray-100 flex flex-col" style="height: calc(100vh - 250px); min-height: 600px;">
+                <!-- Chat Header -->
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-lg">
+                            🤖
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Interview Prep Assistant</h3>
+                            <p class="text-xs text-gray-500">AI-powered preparation coach</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="loadPracticeQuestions('technical')"
+                                class="px-3 py-1.5 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition font-medium">
+                            Technical Q's
+                        </button>
+                        <button onclick="loadPracticeQuestions('behavioral')"
+                                class="px-3 py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition font-medium">
+                            Behavioral Q's
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chat Messages -->
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4">
+                    <!-- Welcome Message -->
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0">
+                            🤖
+                        </div>
+                        <div class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-3 max-w-[80%]">
+                            <p class="text-gray-800">
+                                Hi! I'm your interview preparation assistant for the <strong>{{ job.title }}</strong> position at <strong>{{ job.company }}</strong>.
+                            </p>
+                            <p class="text-gray-800 mt-2">
+                                I can help you with:
+                            </p>
+                            <ul class="text-gray-700 mt-1 text-sm list-disc list-inside">
+                                <li>Practice interview questions</li>
+                                <li>Tips for answering common questions</li>
+                                <li>Understanding job requirements</li>
+                                <li>Building confidence for your interview</li>
+                            </ul>
+                            <p class="text-gray-800 mt-2">
+                                What would you like to focus on?
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="px-6 py-3 border-t border-gray-100 flex gap-2 flex-wrap">
+                    <button onclick="sendQuickMessage('Give me practice questions')"
+                            class="px-3 py-1.5 text-xs bg-purple-50 text-purple-700 rounded-full hover:bg-purple-100 transition">
+                        Practice Questions
+                    </button>
+                    <button onclick="sendQuickMessage('What should I know about this role?')"
+                            class="px-3 py-1.5 text-xs bg-purple-50 text-purple-700 rounded-full hover:bg-purple-100 transition">
+                        About the Role
+                    </button>
+                    <button onclick="sendQuickMessage('How should I prepare for the interview?')"
+                            class="px-3 py-1.5 text-xs bg-purple-50 text-purple-700 rounded-full hover:bg-purple-100 transition">
+                        Preparation Tips
+                    </button>
+                    <button onclick="sendQuickMessage('What skills should I highlight?')"
+                            class="px-3 py-1.5 text-xs bg-purple-50 text-purple-700 rounded-full hover:bg-purple-100 transition">
+                        Key Skills
+                    </button>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="px-6 py-4 border-t border-gray-200">
+                    <form id="chat-form" class="flex gap-3">
+                        <input type="text" id="chat-input"
+                               placeholder="Ask me anything about preparing for this interview..."
+                               class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                        <button type="submit"
+                                class="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition font-medium flex items-center gap-2">
+                            <span>Send</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Practice Questions Modal -->
+<div id="questions-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-gray-900">Practice Questions</h3>
+            <button onclick="closeQuestionsModal()" class="text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div id="questions-content" class="p-6 overflow-y-auto max-h-[60vh]">
+            <div class="flex items-center justify-center py-8">
+                <div class="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const JOB_ID = '{{ job.id }}';
+let chatHistory = [];
+
+// Chat form submission
+document.getElementById('chat-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (message) {
+        sendMessage(message);
+        input.value = '';
+    }
+});
+
+function sendQuickMessage(message) {
+    sendMessage(message);
+}
+
+function sendMessage(message) {
+    const messagesContainer = document.getElementById('chat-messages');
+
+    // Add user message
+    const userMsgHtml = `
+        <div class="flex items-start gap-3 justify-end">
+            <div class="bg-purple-600 text-white rounded-2xl rounded-tr-none px-4 py-3 max-w-[80%]">
+                <p>${escapeHtml(message)}</p>
+            </div>
+            <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 text-sm flex-shrink-0">
+                👤
+            </div>
+        </div>
+    `;
+    messagesContainer.insertAdjacentHTML('beforeend', userMsgHtml);
+
+    // Add loading indicator
+    const loadingId = 'loading-' + Date.now();
+    const loadingHtml = `
+        <div id="${loadingId}" class="flex items-start gap-3">
+            <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0">
+                🤖
+            </div>
+            <div class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                </div>
+            </div>
+        </div>
+    `;
+    messagesContainer.insertAdjacentHTML('beforeend', loadingHtml);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Update history
+    chatHistory.push({ role: 'user', content: message });
+
+    // Send to server
+    fetch(`/interview-prep/${JOB_ID}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            message: message,
+            history: chatHistory
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        // Remove loading
+        document.getElementById(loadingId).remove();
+
+        if (data.success && data.response) {
+            chatHistory.push({ role: 'assistant', content: data.response });
+
+            // Add bot response
+            const botMsgHtml = `
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0">
+                        🤖
+                    </div>
+                    <div class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-3 max-w-[80%]">
+                        <div class="prose prose-sm text-gray-800">${formatResponse(data.response)}</div>
+                    </div>
+                </div>
+            `;
+            messagesContainer.insertAdjacentHTML('beforeend', botMsgHtml);
+        } else {
+            // Error message
+            const errorHtml = `
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0">
+                        ❌
+                    </div>
+                    <div class="bg-red-50 text-red-700 rounded-2xl rounded-tl-none px-4 py-3">
+                        <p>Sorry, I couldn't process your request. Please try again.</p>
+                    </div>
+                </div>
+            `;
+            messagesContainer.insertAdjacentHTML('beforeend', errorHtml);
+        }
+
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    })
+    .catch(err => {
+        document.getElementById(loadingId).remove();
+        console.error('Chat error:', err);
+    });
+}
+
+function loadPracticeQuestions(type) {
+    const modal = document.getElementById('questions-modal');
+    const content = document.getElementById('questions-content');
+
+    modal.classList.remove('hidden');
+    content.innerHTML = `
+        <div class="flex items-center justify-center py-8">
+            <div class="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full"></div>
+        </div>
+    `;
+
+    fetch(`/interview-prep/${JOB_ID}/questions?type=${type}`)
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.questions) {
+            let html = '<div class="space-y-6">';
+            data.questions.forEach((q, i) => {
+                html += `
+                    <div class="border border-gray-200 rounded-xl p-4">
+                        <div class="flex items-start gap-3 mb-3">
+                            <span class="w-7 h-7 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">${i + 1}</span>
+                            <p class="font-semibold text-gray-900">${escapeHtml(q.question)}</p>
+                        </div>
+                        ${q.key_points ? `
+                            <div class="ml-10 mb-3">
+                                <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Key Points to Cover:</p>
+                                <ul class="text-sm text-gray-700 list-disc list-inside">
+                                    ${q.key_points.map(p => `<li>${escapeHtml(p)}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                        ${q.sample_answer ? `
+                            <div class="ml-10">
+                                <button onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('span').textContent = this.nextElementSibling.classList.contains('hidden') ? 'Show' : 'Hide'"
+                                        class="text-xs text-purple-600 hover:text-purple-700 font-medium">
+                                    <span>Show</span> Sample Answer
+                                </button>
+                                <div class="hidden mt-2 p-3 bg-purple-50 rounded-lg text-sm text-gray-700">
+                                    ${escapeHtml(q.sample_answer)}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            html += '</div>';
+            content.innerHTML = html;
+        } else {
+            content.innerHTML = '<p class="text-gray-500 text-center py-8">Could not load questions. Please try again.</p>';
+        }
+    })
+    .catch(err => {
+        content.innerHTML = '<p class="text-red-500 text-center py-8">Error loading questions.</p>';
+    });
+}
+
+function closeQuestionsModal() {
+    document.getElementById('questions-modal').classList.add('hidden');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatResponse(text) {
+    // Convert markdown-like formatting to HTML
+    let html = escapeHtml(text);
+
+    // Bold text
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    // Bullet points
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/gs, '<ul class="list-disc list-inside my-2">$1</ul>');
+
+    // Numbered lists
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+    // Line breaks
+    html = html.replace(/\n\n/g, '</p><p class="mt-2">');
+    html = html.replace(/\n/g, '<br>');
+
+    return '<p>' + html + '</p>';
+}
+
+// Close modal on outside click
+document.getElementById('questions-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeQuestionsModal();
+    }
+});
+</script>
+{% endblock %}

@@ -107,3 +107,61 @@ def mark_all_read():
     count = storage.mark_all_notifications_read(current_user.id)
     flash(f'Marked {count} notification(s) as read.', 'success')
     return redirect(url_for('profile.notifications'))
+
+
+@bp.route('/my-profile')
+@login_required
+def candidate_profile():
+    """View candidate profile with parsed resume details"""
+    if current_user.user_type != 'candidate':
+        flash('Access denied.', 'error')
+        return redirect(url_for('dashboard.index'))
+
+    storage = get_storage()
+
+    # Get candidate's resumes
+    resumes = storage.get_resumes_by_user(current_user.id)
+    resumes = sorted(resumes, key=lambda r: r.get('created_at', ''), reverse=True)
+
+    # Get latest resume with parsed data
+    latest_resume = None
+    parsed_data = {}
+    if resumes:
+        latest_resume = resumes[0]
+        parsed_data = latest_resume.get('parsed_data', {})
+        if isinstance(parsed_data, str):
+            import json
+            try:
+                parsed_data = json.loads(parsed_data)
+            except:
+                parsed_data = {}
+
+    # Get applications statistics
+    applications = storage.get_applications_by_candidate(current_user.id)
+    stats = {
+        'total_applications': len(applications),
+        'shortlisted': sum(1 for a in applications if a.get('status') == 'shortlisted'),
+        'interview': sum(1 for a in applications if a.get('status') == 'interview'),
+        'hired': sum(1 for a in applications if a.get('status') == 'hired'),
+        'pending': sum(1 for a in applications if a.get('status') == 'pending'),
+    }
+
+    # Get upcoming interviews
+    upcoming_interviews = []
+    for app in applications:
+        if app.get('status') == 'interview' and app.get('chosen_slot'):
+            job = storage.get_job_by_id(app.get('job_id', ''))
+            upcoming_interviews.append({
+                'application': app,
+                'job': job,
+                'slot': app.get('chosen_slot'),
+            })
+
+    return render_template(
+        'profile/candidate_profile.html',
+        resumes=resumes,
+        latest_resume=latest_resume,
+        parsed_data=parsed_data,
+        stats=stats,
+        upcoming_interviews=upcoming_interviews,
+    )

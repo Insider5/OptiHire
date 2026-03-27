@@ -37,6 +37,8 @@ class JobModel:
     job_type: str = "Full-time"      # Full-time | Part-time | Contract
     experience_level: str = "Mid"    # Entry | Junior | Mid | Senior
     salary_range: str = ""
+    deadline: str = ""               # Application deadline (YYYY-MM-DD format)
+    custom_questions: str = "[]"     # JSON-encoded list of custom question strings
     created_at: str = ""
     updated_at: str = ""
     is_active: bool = True

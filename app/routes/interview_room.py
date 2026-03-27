@@ -13,9 +13,12 @@ GET  /interview/room/<app_id>/feedback  → post-interview scoring form (recruit
 POST /interview/room/<app_id>/feedback  → submit scores + hire decision
 """
 from flask import (Blueprint, render_template, request, jsonify,
-                   redirect, url_for, flash)
+                   redirect, url_for, flash, current_app)
 from flask_login import login_required, current_user
+from flask_socketio import emit, join_room, leave_room
 from app.storage import get_storage
+from app.services.email_service import send_status_email
+from app import socketio
 from datetime import datetime
 import json
 
@@ -288,6 +291,15 @@ def feedback(application_id):
                 ),
                 'notification_type': 'success',
             })
+            # Send hire notification email to candidate
+            send_status_email(
+                candidate_email=candidate.get('email', ''),
+                candidate_name=candidate.get('full_name', candidate.get('username', 'Candidate')),
+                job_title=job.get('title', 'the role'),
+                company=job.get('company', ''),
+                new_status='hired',
+                application_id=application_id
+            )
         elif decision == 'rejected':
             storage.create_notification({
                 'user_id':           application.get('candidate_id'),
@@ -300,6 +312,15 @@ def feedback(application_id):
                 ),
                 'notification_type': 'info',
             })
+            # Send rejection notification email to candidate
+            send_status_email(
+                candidate_email=candidate.get('email', ''),
+                candidate_name=candidate.get('full_name', candidate.get('username', 'Candidate')),
+                job_title=job.get('title', 'the role'),
+                company=job.get('company', ''),
+                new_status='rejected',
+                application_id=application_id
+            )
 
         flash('Interview feedback saved! ✅', 'success')
         return redirect(url_for('candidates.view_application',
@@ -311,3 +332,484 @@ def feedback(application_id):
         job=job,
         candidate=candidate,
     )
+
+
+@bp.route('/room/<application_id>/candidate-feedback', methods=['GET', 'POST'])
+@login_required
+def candidate_feedback(application_id):
+    """Post-interview feedback form for candidates to rate their experience."""
+    storage = get_storage()
+    application, job, role = _authorize(application_id)
+
+    if not application or role != 'candidate':
+        flash('Access denied.', 'error')
+        return redirect(url_for('main.index'))
+
+    # Check if interview has ended
+    if not application.get('room_ended_at'):
+        flash('Interview has not ended yet.', 'warning')
+        return redirect(url_for('interview_room.room',
+                                application_id=application_id))
+
+    # Check if already submitted
+    if application.get('candidate_feedback_submitted'):
+        flash('You have already submitted feedback for this interview.', 'info')
+        return redirect(url_for('candidates.view_application',
+                                application_id=application_id))
+
+    recruiter = storage.get_user_by_id(job.get('recruiter_id', '')) if job else None
+
+    if request.method == 'POST':
+        experience_rating = request.form.get('experience_rating', '').strip()
+        interviewer_rating = request.form.get('interviewer_rating', '').strip()
+        platform_rating = request.form.get('platform_rating', '').strip()
+        feedback_text = request.form.get('feedback_text', '').strip()
+        would_recommend = request.form.get('would_recommend', '').strip()
+
+        updates = {
+            'candidate_feedback_submitted': True,
+            'candidate_feedback_at': datetime.now().isoformat(),
+            'candidate_feedback_text': feedback_text[:2_000],
+            'candidate_would_recommend': would_recommend == 'yes',
+        }
+
+        try:
+            exp = int(experience_rating)
+            if 1 <= exp <= 5:
+                updates['candidate_experience_rating'] = exp
+        except (ValueError, TypeError):
+            pass
+
+        try:
+            inter = int(interviewer_rating)
+            if 1 <= inter <= 5:
+                updates['candidate_interviewer_rating'] = inter
+        except (ValueError, TypeError):
+            pass
+
+        try:
+            plat = int(platform_rating)
+            if 1 <= plat <= 5:
+                updates['candidate_platform_rating'] = plat
+        except (ValueError, TypeError):
+            pass
+
+        storage.update_application(application_id, updates)
+
+        # Notify recruiter about candidate feedback
+        if job:
+            storage.create_notification({
+                'user_id':           job.get('recruiter_id'),
+                'application_id':    application_id,
+                'title':             'Candidate Submitted Interview Feedback',
+                'message':           (
+                    f'{current_user.full_name or current_user.username} has '
+                    f'submitted feedback for the {job.get("title", "interview")} interview.'
+                ),
+                'notification_type': 'info',
+            })
+
+        flash('Thank you for your feedback! 🙏', 'success')
+        return redirect(url_for('candidates.view_application',
+                                application_id=application_id))
+
+    return render_template(
+        'interview/candidate_feedback.html',
+        application=application,
+        job=job,
+        recruiter=recruiter,
+    )
+
+
+# ─────────────────────────────────────────
+# WebSocket Event Handlers (Real-time Sync)
+# ─────────────────────────────────────────
+
+@socketio.on('join_interview')
+@login_required
+def handle_join_interview(data):
+    """Handle user joining interview room"""
+    application_id = data.get('application_id')
+    room = f'interview_{application_id}'
+    join_room(room)
+    emit('user_joined', {
+        'user': current_user.full_name or current_user.username,
+        'timestamp': datetime.now().isoformat()
+    }, room=room)
+
+
+@socketio.on('leave_interview')
+@login_required
+def handle_leave_interview(data):
+    """Handle user leaving interview room"""
+    application_id = data.get('application_id')
+    room = f'interview_{application_id}'
+    leave_room(room)
+    emit('user_left', {
+        'user': current_user.full_name or current_user.username,
+        'timestamp': datetime.now().isoformat()
+    }, room=room)
+
+
+@socketio.on('code_change')
+@login_required
+def handle_code_change(data):
+    """Handle real-time code changes"""
+    application_id = data.get('application_id')
+    code = data.get('code', '')
+    room = f'interview_{application_id}'
+
+    # Broadcast to all users in this room
+    emit('code_update', {
+        'code': code,
+        'user': current_user.id,
+        'timestamp': datetime.now().isoformat()
+    }, room=room, skip_sid=request.sid)
+
+
+@socketio.on('language_change')
+@login_required
+def handle_language_change(data):
+    """Handle real-time language changes"""
+    application_id = data.get('application_id')
+    language = data.get('language', 'python')
+    room = f'interview_{application_id}'
+
+    # Broadcast to all users in this room
+    emit('language_update', {
+        'language': language,
+        'user': current_user.id,
+        'timestamp': datetime.now().isoformat()
+    }, room=room, skip_sid=request.sid)
+
+
+@socketio.on('notes_change')
+@login_required
+def handle_notes_change(data):
+    """Handle real-time recruiter notes changes"""
+    application_id = data.get('application_id')
+    notes = data.get('notes', '')
+    room = f'interview_{application_id}'
+
+    # Broadcast to all users in this room
+    emit('notes_update', {
+        'notes': notes,
+        'user': current_user.id,
+        'timestamp': datetime.now().isoformat()
+    }, room=room, skip_sid=request.sid)
+
+
+@socketio.on('code_execute')
+@login_required
+def handle_code_execute(data):
+    """Handle code execution output broadcasting"""
+    application_id = data.get('application_id')
+    language = data.get('language', 'python')
+    code = data.get('code', '')
+    stdout = data.get('stdout', '')
+    stderr = data.get('stderr', '')
+    exit_code = data.get('exit_code', 0)
+
+    room = f'interview_{application_id}'
+
+    # Broadcast code execution output to all users in this room
+    emit('code_executed', {
+        'language': language,
+        'code': code,
+        'stdout': stdout,
+        'stderr': stderr,
+        'exit_code': exit_code,
+        'user': current_user.id,
+        'timestamp': datetime.now().isoformat()
+    }, room=room)
+
+
+# ─────────────────────────────────────────
+# Code Execution Endpoint
+# ─────────────────────────────────────────
+
+@bp.route('/room/<application_id>/execute', methods=['POST'])
+@login_required
+def execute_code(application_id):
+    """Execute code via local execution or Piston API"""
+    import requests
+    import subprocess
+
+    application, _, _ = _authorize(application_id)
+    if not application:
+        return jsonify({'error': 'Not found'}), 404
+
+    try:
+        payload = request.get_json() or {}
+        language = payload.get('language', 'python')
+        version = payload.get('version', '3.10.0')
+        code = payload.get('code', '')
+
+        if not code.strip():
+            return jsonify({'error': 'Code is empty'}), 400
+
+        # For Python, use local execution (most reliable)
+        if language == 'python':
+            try:
+                result = subprocess.run(
+                    ['python', '-c', code],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                return jsonify({
+                    'run': {
+                        'stdout': result.stdout,
+                        'stderr': result.stderr,
+                        'code': result.returncode
+                    }
+                }), 200
+            except subprocess.TimeoutExpired:
+                return jsonify({'run': {'stdout': '', 'stderr': 'Code execution timed out (>10s)', 'code': 1}}), 200
+            except Exception as e:
+                return jsonify({'run': {'stdout': '', 'stderr': f'Execution error: {str(e)[:200]}', 'code': 1}}), 200
+
+        # For other languages, try local execution
+        # Supported: JavaScript (Node.js), Java, C++, Go, Rust, TypeScript
+
+        import tempfile
+        import os as os_module
+
+        # Map language to execution method
+        language_exec = {
+            'javascript': ('node', lambda code: code, None),
+            'typescript': ('node', lambda code: code, None),  # Need ts-node or compile first
+            'java': ('java', None, 'Java'),  # Needs compilation
+            'c++': ('g++', None, 'C++'),  # Needs compilation
+            'go': ('go', None, 'Go'),  # go run
+            'rust': ('rustc', None, 'Rust'),  # Needs compilation
+        }
+
+        if language not in language_exec:
+            # Unsupported language
+            return jsonify({
+                'run': {
+                    'stdout': '',
+                    'stderr': f'Code execution for {language} is not available.\nSupported: Python, JavaScript, Java, C++, Go, Rust',
+                    'code': 1
+                }
+            }), 200
+
+        executor_cmd, code_wrapper, lang_name = language_exec[language]
+
+        # Try JavaScript/TypeScript with Node.js
+        if language in ['javascript', 'typescript']:
+            try:
+                result = subprocess.run(
+                    ['node', '-e', code],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                return jsonify({
+                    'run': {
+                        'stdout': result.stdout,
+                        'stderr': result.stderr,
+                        'code': result.returncode
+                    }
+                }), 200
+            except FileNotFoundError:
+                pass
+            except subprocess.TimeoutExpired:
+                return jsonify({'run': {'stdout': '', 'stderr': 'Timeout: Code took longer than 10s', 'code': 1}}), 200
+            except Exception as e:
+                current_app.logger.warning(f'{language} local execution failed: {e}')
+
+        # Try Java
+        elif language == 'java':
+            try:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    # For simplicity, wrap code in a main class
+                    if 'class ' not in code or 'public static void main' not in code:
+                        # Wrap user code in a simple main
+                        wrapped = f'public class Solution {{\n    public static void main(String[] args) {{\n        {code}\n    }}\n}}'
+                        java_file = os_module.path.join(tmpdir, 'Solution.java')
+                    else:
+                        wrapped = code
+                        java_file = os_module.path.join(tmpdir, 'Main.java')
+
+                    with open(java_file, 'w') as f:
+                        f.write(wrapped)
+
+                    # Compile
+                    compile_result = subprocess.run(
+                        ['javac', java_file],
+                        capture_output=True,
+                        text=True,
+                        timeout=15
+                    )
+
+                    if compile_result.returncode != 0:
+                        return jsonify({'run': {'stdout': '', 'stderr': compile_result.stderr, 'code': 1}}), 200
+
+                    # Run
+                    class_name = 'Solution' if 'Solution' in wrapped else 'Main'
+                    result = subprocess.run(
+                        ['java', '-cp', tmpdir, class_name],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+
+                    return jsonify({
+                        'run': {
+                            'stdout': result.stdout,
+                            'stderr': result.stderr,
+                            'code': result.returncode
+                        }
+                    }), 200
+            except FileNotFoundError:
+                pass
+            except subprocess.TimeoutExpired:
+                return jsonify({'run': {'stdout': '', 'stderr': 'Timeout: Code took longer than 10s', 'code': 1}}), 200
+            except Exception as e:
+                current_app.logger.warning(f'Java execution failed: {e}')
+
+        # Try C++
+        elif language == 'c++':
+            try:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    cpp_file = os_module.path.join(tmpdir, 'solution.cpp')
+                    exe_file = os_module.path.join(tmpdir, 'solution')
+
+                    with open(cpp_file, 'w') as f:
+                        f.write(code)
+
+                    # Compile
+                    compile_result = subprocess.run(
+                        ['g++', '-o', exe_file, cpp_file],
+                        capture_output=True,
+                        text=True,
+                        timeout=15
+                    )
+
+                    if compile_result.returncode != 0:
+                        return jsonify({'run': {'stdout': '', 'stderr': compile_result.stderr, 'code': 1}}), 200
+
+                    # Run
+                    result = subprocess.run(
+                        [exe_file],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+
+                    return jsonify({
+                        'run': {
+                            'stdout': result.stdout,
+                            'stderr': result.stderr,
+                            'code': result.returncode
+                        }
+                    }), 200
+            except FileNotFoundError:
+                pass
+            except subprocess.TimeoutExpired:
+                return jsonify({'run': {'stdout': '', 'stderr': 'Timeout: Code took longer than 10s', 'code': 1}}), 200
+            except Exception as e:
+                current_app.logger.warning(f'C++ execution failed: {e}')
+
+        # Try Go
+        elif language == 'go':
+            try:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    go_file = os_module.path.join(tmpdir, 'solution.go')
+                    exe_file = os_module.path.join(tmpdir, 'solution')
+
+                    with open(go_file, 'w') as f:
+                        f.write(code)
+
+                    # Compile
+                    compile_result = subprocess.run(
+                        ['go', 'build', '-o', exe_file, go_file],
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
+                        cwd=tmpdir
+                    )
+
+                    if compile_result.returncode != 0:
+                        return jsonify({'run': {'stdout': '', 'stderr': compile_result.stderr, 'code': 1}}), 200
+
+                    # Run
+                    result = subprocess.run(
+                        [exe_file],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+
+                    return jsonify({
+                        'run': {
+                            'stdout': result.stdout,
+                            'stderr': result.stderr,
+                            'code': result.returncode
+                        }
+                    }), 200
+            except FileNotFoundError:
+                pass
+            except subprocess.TimeoutExpired:
+                return jsonify({'run': {'stdout': '', 'stderr': 'Timeout: Code took longer than 10s', 'code': 1}}), 200
+            except Exception as e:
+                current_app.logger.warning(f'Go execution failed: {e}')
+
+        # Try Rust
+        elif language == 'rust':
+            try:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    rs_file = os_module.path.join(tmpdir, 'solution.rs')
+                    exe_file = os_module.path.join(tmpdir, 'solution')
+
+                    with open(rs_file, 'w') as f:
+                        f.write(code)
+
+                    # Compile
+                    compile_result = subprocess.run(
+                        ['rustc', '-o', exe_file, rs_file],
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+
+                    if compile_result.returncode != 0:
+                        return jsonify({'run': {'stdout': '', 'stderr': compile_result.stderr, 'code': 1}}), 200
+
+                    # Run
+                    result = subprocess.run(
+                        [exe_file],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+
+                    return jsonify({
+                        'run': {
+                            'stdout': result.stdout,
+                            'stderr': result.stderr,
+                            'code': result.returncode
+                        }
+                    }), 200
+            except FileNotFoundError:
+                pass
+            except subprocess.TimeoutExpired:
+                return jsonify({'run': {'stdout': '', 'stderr': 'Timeout: Code took longer than 10s', 'code': 1}}), 200
+            except Exception as e:
+                current_app.logger.warning(f'Rust execution failed: {e}')
+
+        # If we get here, the required executor was not found
+        return jsonify({
+            'run': {
+                'stdout': '',
+                'stderr': f'⚠ {language.upper()} execution requires {executor_cmd} to be installed.\n\n✓ Fully supported:\n  • Python w/ any version\n\n✓ If tools are installed:\n  • JavaScript/TypeScript (requires Node.js)\n  • Java (requires JDK javac)\n  • C++ (requires g++ compiler)\n  • Go (requires go compiler)\n  • Rust (requires rustc compiler)\n\nPlease use Python to complete the interview or install the required tools.',
+                'code': 1
+            }
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f'Execute endpoint error: {e}')
+        return jsonify({'run': {'stdout': '', 'stderr': f'Error: {str(e)[:150]}', 'code': 1}}), 200
+

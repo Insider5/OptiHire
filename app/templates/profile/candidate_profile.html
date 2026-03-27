@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - OptiHire{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-r from-primary-600 to-primary-800 text-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center gap-6">
+            <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center text-4xl font-bold">
+                {{ current_user.full_name[0].upper() if current_user.full_name else current_user.username[0].upper() }}
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold">{{ current_user.full_name or current_user.username }}</h1>
+                <p class="text-gray-200 mt-1">{{ current_user.email }}</p>
+                <div class="flex gap-3 mt-3">
+                    <a href="{{ url_for('profile.edit') }}" class="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition">
+                        Edit Profile
+                    </a>
+                    <a href="{{ url_for('candidates.upload_resume') }}" class="px-4 py-1.5 bg-white text-primary-700 rounded-lg text-sm font-medium hover:bg-gray-100 transition">
+                        Upload Resume
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div class="bg-white rounded-xl p-4 shadow border border-gray-100 text-center">
+            <p class="text-2xl font-bold text-gray-900">{{ stats.total_applications }}</p>
+            <p class="text-xs text-gray-500 mt-1">Total Applications</p>
+        </div>
+        <div class="bg-white rounded-xl p-4 shadow border border-gray-100 text-center">
+            <p class="text-2xl font-bold text-yellow-600">{{ stats.pending }}</p>
+            <p class="text-xs text-gray-500 mt-1">Pending</p>
+        </div>
+        <div class="bg-white rounded-xl p-4 shadow border border-gray-100 text-center">
+            <p class="text-2xl font-bold text-blue-600">{{ stats.shortlisted }}</p>
+            <p class="text-xs text-gray-500 mt-1">Shortlisted</p>
+        </div>
+        <div class="bg-white rounded-xl p-4 shadow border border-gray-100 text-center">
+            <p class="text-2xl font-bold text-purple-600">{{ stats.interview }}</p>
+            <p class="text-xs text-gray-500 mt-1">Interviews</p>
+        </div>
+        <div class="bg-white rounded-xl p-4 shadow border border-gray-100 text-center">
+            <p class="text-2xl font-bold text-green-600">{{ stats.hired }}</p>
+            <p class="text-xs text-gray-500 mt-1">Hired</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column: Parsed Resume Details -->
+        <div class="lg:col-span-2 space-y-6">
+            {% if parsed_data %}
+            <!-- Skills -->
+            <div class="bg-white rounded-xl shadow border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">🎯</span> Skills
+                </h2>
+                {% if parsed_data.skills %}
+                <div class="flex flex-wrap gap-2">
+                    {% for skill in parsed_data.skills %}
+                    <span class="px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-sm font-medium border border-primary-200">
+                        {{ skill }}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-sm">No skills found in resume</p>
+                {% endif %}
+            </div>
+
+            <!-- Experience -->
+            <div class="bg-white rounded-xl shadow border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">💼</span> Experience
+                </h2>
+                {% if parsed_data.experience %}
+                <div class="space-y-4">
+                    {% for exp in parsed_data.experience %}
+                    <div class="border-l-4 border-primary-500 pl-4 py-2">
+                        <h3 class="font-semibold text-gray-900">{{ exp.title if exp.title else exp }}</h3>
+                        {% if exp.company %}<p class="text-sm text-gray-600">{{ exp.company }}</p>{% endif %}
+                        {% if exp.duration %}<p class="text-xs text-gray-500">{{ exp.duration }}</p>{% endif %}
+                        {% if exp.description %}<p class="text-sm text-gray-600 mt-1">{{ exp.description }}</p>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-sm">No experience details found</p>
+                {% endif %}
+                {% if parsed_data.experience_years %}
+                <p class="text-sm text-primary-600 font-medium mt-4">
+                    Total Experience: {{ parsed_data.experience_years }} years
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Education -->
+            <div class="bg-white rounded-xl shadow border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">🎓</span> Education
+                </h2>
+                {% if parsed_data.education %}
+                <div class="space-y-3">
+                    {% for edu in parsed_data.education %}
+                    <div class="border-l-4 border-blue-500 pl-4 py-2">
+                        <h3 class="font-semibold text-gray-900">{{ edu.degree if edu.degree else edu }}</h3>
+                        {% if edu.institution %}<p class="text-sm text-gray-600">{{ edu.institution }}</p>{% endif %}
+                        {% if edu.year %}<p class="text-xs text-gray-500">{{ edu.year }}</p>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-sm">No education details found</p>
+                {% endif %}
+            </div>
+
+            <!-- Certifications -->
+            {% if parsed_data.certifications %}
+            <div class="bg-white rounded-xl shadow border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">📜</span> Certifications
+                </h2>
+                <ul class="space-y-2">
+                    {% for cert in parsed_data.certifications %}
+                    <li class="flex items-center gap-2 text-sm text-gray-700">
+                        <span class="text-green-500">✓</span> {{ cert }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="bg-white rounded-xl shadow border border-gray-100 p-8 text-center">
+                <div class="text-5xl mb-4">📄</div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">No Resume Uploaded</h3>
+                <p class="text-gray-600 mb-6">Upload your resume to see your parsed profile details</p>
+                <a href="{{ url_for('candidates.upload_resume') }}"
+                   class="inline-block px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition">
+                    Upload Resume
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column: Resumes & Upcoming Interviews -->
+        <div class="space-y-6">
+            <!-- Uploaded Resumes -->
+            <div class="bg-white rounded-xl shadow border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">📁</span> My Resumes
+                </h2>
+                {% if resumes %}
+                <div class="space-y-3">
+                    {% for resume in resumes %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 truncate">{{ resume.original_filename or 'Resume' }}</p>
+                            <p class="text-xs text-gray-500">{{ resume.created_at[:10] if resume.created_at else '' }}</p>
+                        </div>
+                        <a href="{{ url_for('candidates.view_resume', resume_id=resume.id) }}"
+                           target="_blank"
+                           class="px-3 py-1 text-xs bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition">
+                            View
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-sm text-center py-4">No resumes uploaded yet</p>
+                {% endif %}
+                <a href="{{ url_for('candidates.upload_resume') }}"
+                   class="block mt-4 text-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium">
+                    + Upload New Resume
+                </a>
+            </div>
+
+            <!-- Upcoming Interviews -->
+            <div class="bg-white rounded-xl shadow border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">📅</span> Upcoming Interviews
+                </h2>
+                {% if upcoming_interviews %}
+                <div class="space-y-4">
+                    {% for item in upcoming_interviews %}
+                    <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <h4 class="font-semibold text-gray-900">{{ item.job.title if item.job else 'Position' }}</h4>
+                        <p class="text-sm text-gray-600">{{ item.job.company if item.job else '' }}</p>
+                        <div class="flex items-center gap-2 mt-2 text-sm text-purple-700 font-medium">
+                            <span>📆</span> {{ item.slot }}
+                        </div>
+                        <a href="{{ url_for('interview_room.room', application_id=item.application.id) }}"
+                           class="block mt-3 text-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm font-semibold">
+                            Join Interview Room
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-sm text-center py-4">No upcoming interviews</p>
+                {% endif %}
+            </div>
+
+            <!-- Quick Links -->
+            <div class="bg-white rounded-xl shadow border border-gray-100 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="text-xl">🔗</span> Quick Links
+                </h2>
+                <div class="space-y-2">
+                    <a href="{{ url_for('dashboard.candidate_dashboard') }}"
+                       class="block px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-gray-700">
+                        🏠 Dashboard
+                    </a>
+                    <a href="{{ url_for('candidates.my_applications') }}"
+                       class="block px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-gray-700">
+                        📋 My Applications
+                    </a>
+                    <a href="{{ url_for('jobs.list_jobs') }}"
+                       class="block px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-gray-700">
+                        💼 Browse Jobs
+                    </a>
+                    <a href="{{ url_for('profile.notifications') }}"
+                       class="block px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-gray-700">
+                        🔔 Notifications
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

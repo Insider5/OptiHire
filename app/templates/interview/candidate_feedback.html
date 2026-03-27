@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% block title %}Interview Feedback — OptiHire{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-8 px-4">
+
+  <!-- Back link -->
+  <a href="{{ url_for('candidates.view_application', application_id=application.id) }}"
+     class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-6 transition">
+    <- Back to Application
+  </a>
+
+  <!-- Header card -->
+  <div class="rounded-2xl p-6 mb-6"
+       style="background:linear-gradient(135deg,rgba(34,197,94,.12),rgba(16,185,129,.08));border:1px solid rgba(34,197,94,.2)">
+    <div class="flex items-start gap-4">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-lg flex-shrink-0"
+           style="background:linear-gradient(135deg,#22c55e,#10b981)">
+        <span class="text-2xl">✅</span>
+      </div>
+      <div class="flex-1">
+        <h1 class="text-xl font-bold text-gray-900 dark:text-white">
+          Interview Completed!
+        </h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          {{ job.title if job else 'Position' }}
+          {% if job and job.company %}at {{ job.company }}{% endif %}
+        </p>
+      </div>
+      <span class="px-3 py-1 rounded-full text-xs font-semibold"
+            style="background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.25)">
+        Share Feedback
+      </span>
+    </div>
+
+    <p class="text-sm text-gray-600 dark:text-gray-400 mt-4">
+      Thank you for completing the interview. Please share your feedback to help us improve the interview experience.
+    </p>
+  </div>
+
+  <!-- Feedback form -->
+  <form method="POST"
+        action="{{ url_for('interview_room.candidate_feedback', application_id=application.id) }}"
+        class="space-y-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+    <!-- Overall Experience Rating -->
+    <div class="rounded-2xl p-6"
+         style="background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb)">
+      <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">
+        Overall Experience <span class="text-red-500">*</span>
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        How was your overall interview experience? (1 = Poor, 5 = Excellent)
+      </p>
+
+      <div class="flex items-center gap-2" id="exp-star-row">
+        {% for i in range(1, 6) %}
+        <button type="button" onclick="setExpRating({{ i }})" id="exp-star-{{ i }}"
+                class="text-3xl transition-transform hover:scale-110 focus:outline-none cursor-pointer select-none"
+                title="{{ i }} star{{ 's' if i > 1 else '' }}">&#9734;</button>
+        {% endfor %}
+        <span id="exp-rating-label" class="ml-3 text-sm text-gray-500 dark:text-gray-400"></span>
+      </div>
+      <input type="hidden" id="experience-rating-input" name="experience_rating" value=""/>
+    </div>
+
+    <!-- Interviewer Rating -->
+    <div class="rounded-2xl p-6"
+         style="background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb)">
+      <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">
+        Interviewer Rating
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        How would you rate the interviewer{% if recruiter %} ({{ recruiter.full_name or recruiter.username }}){% endif %}?
+      </p>
+
+      <div class="flex items-center gap-2" id="int-star-row">
+        {% for i in range(1, 6) %}
+        <button type="button" onclick="setIntRating({{ i }})" id="int-star-{{ i }}"
+                class="text-3xl transition-transform hover:scale-110 focus:outline-none cursor-pointer select-none"
+                title="{{ i }} star{{ 's' if i > 1 else '' }}">&#9734;</button>
+        {% endfor %}
+        <span id="int-rating-label" class="ml-3 text-sm text-gray-500 dark:text-gray-400"></span>
+      </div>
+      <input type="hidden" id="interviewer-rating-input" name="interviewer_rating" value=""/>
+    </div>
+
+    <!-- Platform Rating -->
+    <div class="rounded-2xl p-6"
+         style="background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb)">
+      <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">
+        Platform Rating
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        How was the interview platform (video, code editor, etc.)?
+      </p>
+
+      <div class="flex items-center gap-2" id="plat-star-row">
+        {% for i in range(1, 6) %}
+        <button type="button" onclick="setPlatRating({{ i }})" id="plat-star-{{ i }}"
+                class="text-3xl transition-transform hover:scale-110 focus:outline-none cursor-pointer select-none"
+                title="{{ i }} star{{ 's' if i > 1 else '' }}">&#9734;</button>
+        {% endfor %}
+        <span id="plat-rating-label" class="ml-3 text-sm text-gray-500 dark:text-gray-400"></span>
+      </div>
+      <input type="hidden" id="platform-rating-input" name="platform_rating" value=""/>
+    </div>
+
+    <!-- Feedback textarea -->
+    <div class="rounded-2xl p-6"
+         style="background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb)">
+      <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">
+        Additional Feedback
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Share any comments, suggestions, or concerns about your interview experience.
+      </p>
+      <textarea name="feedback_text" id="feedback-text" rows="5"
+                placeholder="e.g. The interviewer was very professional. The code editor worked great. I would suggest adding more time for questions..."
+                class="w-full rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                style="background:var(--input-bg,#f9fafb);border:1px solid var(--border-color,#e5e7eb);color:var(--text-primary,#111827)"></textarea>
+      <div class="flex justify-end mt-1">
+        <span id="fb-count" class="text-xs text-gray-400">0 / 2000</span>
+      </div>
+    </div>
+
+    <!-- Would recommend -->
+    <div class="rounded-2xl p-6"
+         style="background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb)">
+      <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-4">
+        Would you recommend this company to others?
+      </h2>
+
+      <div class="grid grid-cols-2 gap-3">
+        <label class="recommend-card" for="rec-yes" onclick="selectRecommend(this)">
+          <input class="sr-only" type="radio" name="would_recommend" value="yes" id="rec-yes"/>
+          <div class="text-2xl mb-2">&#128077;</div>
+          <div class="font-semibold text-sm">Yes</div>
+          <div class="text-xs text-gray-500 mt-0.5">I would recommend</div>
+        </label>
+
+        <label class="recommend-card" for="rec-no" onclick="selectRecommend(this)">
+          <input class="sr-only" type="radio" name="would_recommend" value="no" id="rec-no"/>
+          <div class="text-2xl mb-2">&#128078;</div>
+          <div class="font-semibold text-sm">No</div>
+          <div class="text-xs text-gray-500 mt-0.5">Not at this time</div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="flex items-center justify-between gap-4">
+      <a href="{{ url_for('candidates.view_application', application_id=application.id) }}"
+         class="px-5 py-2.5 rounded-xl text-sm font-semibold transition"
+         style="background:var(--card-bg,#f3f4f6);color:var(--text-secondary,#374151);border:1px solid var(--border-color,#e5e7eb)">
+        Skip for now
+      </a>
+      <button type="submit"
+              class="px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90 shadow"
+              style="background:linear-gradient(135deg,#22c55e,#10b981)">
+        Submit Feedback
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<!-- Styles -->
+<style>
+  .recommend-card {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 16px 12px; border-radius: 12px; cursor: pointer; text-align: center;
+    border: 2px solid var(--border-color, #e5e7eb);
+    background: var(--input-bg, #f9fafb);
+    color: var(--text-primary, #111827);
+    transition: all .15s;
+  }
+  .recommend-card:hover { border-color: #22c55e; }
+  .recommend-card.selected {
+    border-color: #22c55e;
+    background: rgba(34,197,94,.07);
+    box-shadow: 0 0 0 3px rgba(34,197,94,.12);
+  }
+</style>
+
+<!-- Script -->
+<script>
+/* Star ratings */
+var labels = ['','Poor','Below Average','Average','Good','Excellent'];
+
+var expRating = 0;
+function setExpRating(n) {
+  expRating = n;
+  document.getElementById('experience-rating-input').value = n;
+  document.getElementById('exp-rating-label').textContent = labels[n] || '';
+  for (var i = 1; i <= 5; i++) {
+    document.getElementById('exp-star-' + i).innerHTML = i <= n ? '&#9733;' : '&#9734;';
+    document.getElementById('exp-star-' + i).style.color = i <= n ? '#22c55e' : '#9ca3af';
+  }
+}
+
+var intRating = 0;
+function setIntRating(n) {
+  intRating = n;
+  document.getElementById('interviewer-rating-input').value = n;
+  document.getElementById('int-rating-label').textContent = labels[n] || '';
+  for (var i = 1; i <= 5; i++) {
+    document.getElementById('int-star-' + i).innerHTML = i <= n ? '&#9733;' : '&#9734;';
+    document.getElementById('int-star-' + i).style.color = i <= n ? '#22c55e' : '#9ca3af';
+  }
+}
+
+var platRating = 0;
+function setPlatRating(n) {
+  platRating = n;
+  document.getElementById('platform-rating-input').value = n;
+  document.getElementById('plat-rating-label').textContent = labels[n] || '';
+  for (var i = 1; i <= 5; i++) {
+    document.getElementById('plat-star-' + i).innerHTML = i <= n ? '&#9733;' : '&#9734;';
+    document.getElementById('plat-star-' + i).style.color = i <= n ? '#22c55e' : '#9ca3af';
+  }
+}
+
+/* Recommend cards */
+function selectRecommend(label) {
+  document.querySelectorAll('.recommend-card').forEach(function(el) {
+    el.classList.remove('selected');
+  });
+  label.classList.add('selected');
+}
+
+/* Feedback char count */
+(function() {
+  var ta = document.getElementById('feedback-text');
+  var cnt = document.getElementById('fb-count');
+  function update() { cnt.textContent = ta.value.length + ' / 2000'; }
+  update();
+  ta.addEventListener('input', update);
+})();
+</script>
+{% endblock %}

@@ -30,11 +30,12 @@
                         <!-- Resume Selection -->
                         <div>
                             <label class="block text-sm font-bold text-gray-900 mb-3">Select Resume *</label>
-                            <div class="space-y-3">
+                            <div class="space-y-3" id="resume-list">
                                 {% for resume in resumes %}
                                 <label
-                                    class="flex items-start p-4 border-2 border-gray-200 rounded-xl hover:border-primary-500 cursor-pointer transition-colors">
-                                    <input type="radio" name="resume_id" value="{{ resume.id }}" class="mt-1 mr-4"
+                                    class="resume-option flex items-start p-4 border-2 border-gray-200 rounded-xl hover:border-primary-500 cursor-pointer transition-all duration-200"
+                                    data-resume-id="{{ resume.id }}">
+                                    <input type="radio" name="resume_id" value="{{ resume.id }}" class="mt-1 mr-4 resume-radio"
                                         required>
                                     <div class="flex-1">
                                         <div class="flex justify-between items-start">
@@ -73,6 +74,100 @@
                                 </a>
                             </div>
                             {% endif %}
+                        </div>
+
+                        <!-- Match Score Preview -->
+                        <div id="match-preview" class="hidden">
+                            <div class="bg-gradient-to-br from-primary-50 to-purple-50 border-2 border-primary-200 rounded-2xl p-6 transition-all duration-300">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="font-bold text-gray-900 flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                        </svg>
+                                        Match Score Preview
+                                    </h3>
+                                    <div id="preview-loading" class="hidden">
+                                        <div class="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full"></div>
+                                    </div>
+                                </div>
+
+                                <div id="preview-content" class="hidden">
+                                    <div class="flex items-center gap-6 mb-4">
+                                        <!-- Circular Score -->
+                                        <div class="relative w-24 h-24 flex-shrink-0">
+                                            <svg viewBox="0 0 100 100" class="w-full h-full -rotate-90">
+                                                <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" stroke-width="8"/>
+                                                <circle id="score-circle" cx="50" cy="50" r="42" fill="none" stroke="url(#scoreGradient)" stroke-width="8"
+                                                        stroke-dasharray="0 264" stroke-linecap="round" class="transition-all duration-1000"/>
+                                                <defs>
+                                                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                        <stop offset="0%" stop-color="#7c3aed"/>
+                                                        <stop offset="100%" stop-color="#a855f7"/>
+                                                    </linearGradient>
+                                                </defs>
+                                            </svg>
+                                            <div class="absolute inset-0 flex items-center justify-center flex-col">
+                                                <span id="score-value" class="text-2xl font-black text-gray-900">0%</span>
+                                                <span class="text-xs text-gray-500 font-medium">Match</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Score Details -->
+                                        <div class="flex-1 space-y-2">
+                                            <div class="flex items-center justify-between text-sm">
+                                                <span class="text-gray-600">Skills Match</span>
+                                                <span id="skills-score" class="font-bold text-primary-600">0%</span>
+                                            </div>
+                                            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                <div id="skills-bar" class="h-full bg-gradient-to-r from-primary-500 to-purple-500 rounded-full transition-all duration-700" style="width: 0%"></div>
+                                            </div>
+
+                                            <div class="flex items-center justify-between text-sm">
+                                                <span class="text-gray-600">Experience Match</span>
+                                                <span id="exp-score" class="font-bold text-primary-600">0%</span>
+                                            </div>
+                                            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                <div id="exp-bar" class="h-full bg-gradient-to-r from-primary-500 to-purple-500 rounded-full transition-all duration-700" style="width: 0%"></div>
+                                            </div>
+
+                                            <div class="flex items-center justify-between text-sm">
+                                                <span class="text-gray-600">Education Match</span>
+                                                <span id="edu-score" class="font-bold text-primary-600">0%</span>
+                                            </div>
+                                            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                <div id="edu-bar" class="h-full bg-gradient-to-r from-primary-500 to-purple-500 rounded-full transition-all duration-700" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recommendation -->
+                                    <div id="recommendation-box" class="p-3 rounded-lg mb-4">
+                                        <p id="recommendation-text" class="font-semibold text-sm"></p>
+                                    </div>
+
+                                    <!-- Skills Analysis -->
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p class="text-xs font-bold text-green-700 mb-2 flex items-center gap-1">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                </svg>
+                                                Matching Skills
+                                            </p>
+                                            <div id="matching-skills" class="flex flex-wrap gap-1"></div>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-amber-700 mb-2 flex items-center gap-1">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                                </svg>
+                                                Skills to Highlight
+                                            </p>
+                                            <div id="missing-skills" class="flex flex-wrap gap-1"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Cover Letter -->
@@ -118,9 +213,10 @@
 
                         <!-- Submit Button -->
                         {% if resumes %}
-                        <button type="submit"
-                            class="w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-primary-700 hover:to-purple-700 hover-lift shadow-lg">
-                            Submit Application
+                        <button type="submit" id="submit-btn"
+                            class="w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-primary-700 hover:to-purple-700 hover-lift shadow-lg flex items-center justify-center gap-2">
+                            <span id="submit-text">Submit Application</span>
+                            <span id="submit-score" class="hidden px-2 py-0.5 bg-white/20 rounded-full text-sm"></span>
                         </button>
                         {% endif %}
                     </form>
@@ -179,4 +275,165 @@
         </div>
     </div>
 </div>
+
+<script>
+const JOB_ID = '{{ job.id }}';
+let currentScore = 0;
+
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    const resumeRadios = document.querySelectorAll('.resume-radio');
+    console.log('Found resume radios:', resumeRadios.length);
+
+    resumeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            const resumeId = this.value;
+            console.log('Resume selected:', resumeId);
+            fetchMatchPreview(resumeId);
+
+            // Update visual selection
+            document.querySelectorAll('.resume-option').forEach(opt => {
+                opt.classList.remove('border-primary-500', 'bg-primary-50');
+                opt.classList.add('border-gray-200');
+            });
+            this.closest('.resume-option').classList.remove('border-gray-200');
+            this.closest('.resume-option').classList.add('border-primary-500', 'bg-primary-50');
+        });
+    });
+});
+
+function fetchMatchPreview(resumeId) {
+    const previewSection = document.getElementById('match-preview');
+    const loadingEl = document.getElementById('preview-loading');
+    const contentEl = document.getElementById('preview-content');
+
+    if (!previewSection || !loadingEl || !contentEl) {
+        console.error('Preview elements not found');
+        return;
+    }
+
+    previewSection.classList.remove('hidden');
+    loadingEl.classList.remove('hidden');
+    contentEl.classList.add('hidden');
+
+    const url = `/candidates/preview-match/${JOB_ID}/${resumeId}`;
+    console.log('Fetching match preview from:', url);
+
+    fetch(url)
+        .then(r => {
+            console.log('Response status:', r.status);
+            if (!r.ok) {
+                throw new Error(`HTTP error! status: ${r.status}`);
+            }
+            return r.json();
+        })
+        .then(data => {
+            console.log('Match preview data:', data);
+            loadingEl.classList.add('hidden');
+
+            if (data.success) {
+                contentEl.classList.remove('hidden');
+                currentScore = data.score;
+                animateScore(data);
+            } else {
+                console.error('Preview failed:', data.error);
+                // Show error in the preview section
+                contentEl.innerHTML = `<div class="bg-red-100 border border-red-300 rounded-lg p-4 text-red-700">
+                    <p class="font-semibold">Error loading match preview:</p>
+                    <p class="text-sm">${data.error || 'Unknown error'}</p>
+                </div>`;
+                contentEl.classList.remove('hidden');
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching preview:', err);
+            loadingEl.classList.add('hidden');
+            contentEl.innerHTML = `<div class="bg-red-100 border border-red-300 rounded-lg p-4 text-red-700">
+                <p class="font-semibold">Failed to load match preview</p>
+                <p class="text-sm">${err.message || 'Network error'}</p>
+            </div>`;
+            contentEl.classList.remove('hidden');
+        });
+}
+
+function animateScore(data) {
+    const score = data.score || 0;
+    const breakdown = data.breakdown || {};
+    const scoreCircle = document.getElementById('score-circle');
+    const scoreValue = document.getElementById('score-value');
+
+    if (!scoreCircle || !scoreValue) {
+        console.error('Score elements not found');
+        return;
+    }
+
+    // Animate circular progress
+    const circumference = 2 * Math.PI * 42;
+    const dashArray = (score / 100) * circumference;
+    scoreCircle.style.strokeDasharray = `${dashArray} ${circumference}`;
+
+    // Animate score number
+    let current = 0;
+    const increment = Math.max(score / 30, 1);
+    const interval = setInterval(() => {
+        current += increment;
+        if (current >= score) {
+            current = score;
+            clearInterval(interval);
+        }
+        scoreValue.textContent = Math.round(current) + '%';
+    }, 30);
+
+    // Update breakdown bars with safe defaults
+    const skillsMatch = breakdown.skills_match || 0;
+    const expMatch = breakdown.experience_match || 0;
+    const eduMatch = breakdown.education_match || 0;
+
+    document.getElementById('skills-score').textContent = skillsMatch + '%';
+    document.getElementById('skills-bar').style.width = skillsMatch + '%';
+
+    document.getElementById('exp-score').textContent = expMatch + '%';
+    document.getElementById('exp-bar').style.width = expMatch + '%';
+
+    document.getElementById('edu-score').textContent = eduMatch + '%';
+    document.getElementById('edu-bar').style.width = eduMatch + '%';
+
+    // Update recommendation
+    const recBox = document.getElementById('recommendation-box');
+    const recText = document.getElementById('recommendation-text');
+    recText.textContent = data.recommendation || 'Match score calculated';
+
+    if (score >= 70) {
+        recBox.className = 'p-3 rounded-lg mb-4 bg-green-100 border border-green-200';
+        recText.className = 'font-semibold text-sm text-green-800';
+    } else if (score >= 50) {
+        recBox.className = 'p-3 rounded-lg mb-4 bg-yellow-100 border border-yellow-200';
+        recText.className = 'font-semibold text-sm text-yellow-800';
+    } else {
+        recBox.className = 'p-3 rounded-lg mb-4 bg-red-100 border border-red-200';
+        recText.className = 'font-semibold text-sm text-red-800';
+    }
+
+    // Update matching skills
+    const matchingSkills = data.matching_skills || [];
+    const matchingSkillsEl = document.getElementById('matching-skills');
+    matchingSkillsEl.innerHTML = matchingSkills.length > 0
+        ? matchingSkills.map(s => `<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">${s}</span>`).join('')
+        : '<span class="text-xs text-gray-500">None detected</span>';
+
+    // Update missing skills
+    const missingSkills = data.missing_skills || [];
+    const missingSkillsEl = document.getElementById('missing-skills');
+    missingSkillsEl.innerHTML = missingSkills.length > 0
+        ? missingSkills.map(s => `<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">${s}</span>`).join('')
+        : '<span class="text-xs text-gray-500">All covered!</span>';
+
+    // Update submit button
+    const submitScore = document.getElementById('submit-score');
+    if (submitScore) {
+        submitScore.textContent = score + '% Match';
+        submitScore.classList.remove('hidden');
+    }
+}
+</script>
 {% endblock %}

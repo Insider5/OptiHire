@@ -74,12 +74,51 @@
                     </div>
                     {% endif %}
 
+                    {% if job.deadline %}
+                    <div class="bg-orange-50 border-l-4 border-orange-600 p-4 rounded-r-lg mb-6">
+                        <p class="text-sm text-orange-700 font-medium mb-1">Application Deadline</p>
+                        <p class="text-2xl font-bold text-orange-800">{{ job.deadline }}</p>
+                    </div>
+                    {% endif %}
+
                     <!-- Apply Button -->
                     {% if current_user.is_authenticated and current_user.user_type == 'candidate' %}
-                    <a href="{{ url_for('candidates.apply_job', job_id=job.id) }}"
-                        class="block w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg text-center hover:from-primary-700 hover:to-purple-700 hover-lift shadow-lg">
-                        Apply for this Position
-                    </a>
+                        {% if existing_application %}
+                        <!-- Already Applied - Show Status -->
+                        <div class="bg-green-50 border-2 border-green-200 rounded-xl p-4 mb-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-green-800">You've Applied!</p>
+                                        <p class="text-sm text-green-600">Status: <span class="font-semibold capitalize">{{ existing_application.status }}</span></p>
+                                    </div>
+                                </div>
+                                <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                                    {{ (existing_application.similarity_score * 100) | int }}% Match
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <a href="{{ url_for('candidates.view_application', application_id=existing_application.id) }}"
+                                class="flex-1 bg-gradient-to-r from-primary-600 to-purple-600 text-white px-6 py-3 rounded-xl font-bold text-center hover:from-primary-700 hover:to-purple-700 hover-lift shadow-lg">
+                                View Application
+                            </a>
+                            <a href="{{ url_for('candidates.edit_application', application_id=existing_application.id) }}"
+                                class="flex-1 border-2 border-primary-500 text-primary-600 px-6 py-3 rounded-xl font-bold text-center hover:bg-primary-50 transition">
+                                Edit Application
+                            </a>
+                        </div>
+                        {% else %}
+                        <a href="{{ url_for('candidates.apply_job', job_id=job.id) }}"
+                            class="block w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg text-center hover:from-primary-700 hover:to-purple-700 hover-lift shadow-lg">
+                            Apply for this Position
+                        </a>
+                        {% endif %}
                     {% elif not current_user.is_authenticated %}
                     <a href="{{ url_for('auth.login') }}"
                         class="block w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg text-center hover:from-primary-700 hover:to-purple-700 hover-lift shadow-lg">
@@ -136,6 +175,28 @@
                             class="px-4 py-2 bg-gradient-to-r from-primary-100 to-purple-100 text-primary-700 rounded-lg font-semibold text-sm border border-primary-200">
                             {{ skill }}
                         </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Custom Questions -->
+                {% set custom_questions = job.custom_questions | from_json if job.custom_questions else [] %}
+                {% if custom_questions %}
+                <div class="bg-white rounded-2xl shadow-lg p-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                        <svg class="w-6 h-6 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                        Application Questions
+                    </h2>
+                    <div class="space-y-3">
+                        {% for question in custom_questions %}
+                        <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                            <p class="text-indigo-800 font-medium">{{ loop.index }}. {{ question }}</p>
+                        </div>
                         {% endfor %}
                     </div>
                 </div>
@@ -212,13 +273,50 @@
 
                 <!-- CTA Box -->
                 {% if current_user.is_authenticated and current_user.user_type == 'candidate' %}
-                <div class="bg-gradient-to-br from-primary-600 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
-                    <h3 class="text-lg font-bold mb-3">Ready to Apply?</h3>
-                    <p class="text-sm opacity-90 mb-6">Submit your application and get AI-powered insights on your
-                        match!</p>
-                    <a href="{{ url_for('candidates.apply_job', job_id=job.id) }}"
-                        class="block w-full bg-white text-primary-600 px-4 py-3 rounded-lg font-semibold text-center hover:bg-gray-100 hover-lift">
-                        Apply Now
+                    {% if existing_application %}
+                    <!-- Already Applied Card -->
+                    <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white">
+                        <div class="flex items-center gap-2 mb-3">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <h3 class="text-lg font-bold">Application Submitted</h3>
+                        </div>
+                        <p class="text-sm opacity-90 mb-2">Status: <span class="font-bold capitalize">{{ existing_application.status }}</span></p>
+                        <p class="text-sm opacity-90 mb-4">Match Score: <span class="font-bold">{{ (existing_application.similarity_score * 100) | int }}%</span></p>
+                        <div class="space-y-2">
+                            <a href="{{ url_for('candidates.view_application', application_id=existing_application.id) }}"
+                                class="block w-full bg-white text-green-600 px-4 py-2.5 rounded-lg font-semibold text-center hover:bg-gray-100 transition text-sm">
+                                View Details
+                            </a>
+                            <a href="{{ url_for('candidates.edit_application', application_id=existing_application.id) }}"
+                                class="block w-full bg-white/20 text-white px-4 py-2.5 rounded-lg font-semibold text-center hover:bg-white/30 transition text-sm border border-white/30">
+                                Edit Application
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="bg-gradient-to-br from-primary-600 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+                        <h3 class="text-lg font-bold mb-3">Ready to Apply?</h3>
+                        <p class="text-sm opacity-90 mb-6">Submit your application and get AI-powered insights on your
+                            match!</p>
+                        <a href="{{ url_for('candidates.apply_job', job_id=job.id) }}"
+                            class="block w-full bg-white text-primary-600 px-4 py-3 rounded-lg font-semibold text-center hover:bg-gray-100 hover-lift">
+                            Apply Now
+                        </a>
+                    </div>
+                    {% endif %}
+
+                <!-- Interview Prep -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 border border-purple-200">
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="text-2xl">🎯</span>
+                        <h3 class="text-lg font-bold text-gray-900">Interview Prep</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">Chat with our AI to prepare for your interview with personalized questions and tips.</p>
+                    <a href="{{ url_for('interview_prep.preparation_page', job_id=job.id) }}"
+                        class="block w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-3 rounded-lg font-semibold text-center hover:from-purple-700 hover:to-indigo-700 transition">
+                        Start Preparing
                     </a>
                 </div>
                 {% elif not current_user.is_authenticated %}

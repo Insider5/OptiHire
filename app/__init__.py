@@ -5,6 +5,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_socketio import SocketIO
 from config import config
 import os
 import json
@@ -17,6 +18,7 @@ bcrypt = Bcrypt()
 csrf = CSRFProtect()
 mail = Mail()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per day", "60 per hour"])
+socketio = SocketIO(cors_allowed_origins="*")
 
 
 def create_app(config_name='default'):
@@ -30,6 +32,7 @@ def create_app(config_name='default'):
     csrf.init_app(app)
     mail.init_app(app)
     limiter.init_app(app)
+    socketio.init_app(app)
 
     # Configure login manager
     login_manager.login_view = 'auth.login'
@@ -46,6 +49,16 @@ def create_app(config_name='default'):
             except Exception:
                 return []
         return value or []
+
+    @app.template_filter('from_json_or_empty')
+    def from_json_or_empty_filter(value):
+        """Convert JSON string to Python object, return empty list on failure"""
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except Exception:
+                return []
+        return value if value else []
 
     @app.template_filter('percentage')
     def percentage_filter(value):
@@ -89,6 +102,7 @@ def create_app(config_name='default'):
     # ─── Register blueprints ─────────────────────────────────
     from app.routes import auth, main, jobs, candidates, dashboard
     from app.routes import profile, analytics, interviews, interview_room
+    from app.routes import interview_prep
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(main.bp)
@@ -99,6 +113,7 @@ def create_app(config_name='default'):
     app.register_blueprint(analytics.bp)
     app.register_blueprint(interviews.bp)
     app.register_blueprint(interview_room.bp)
+    app.register_blueprint(interview_prep.bp)
 
     # ─── Error handlers ──────────────────────────────────────
     @app.errorhandler(404)

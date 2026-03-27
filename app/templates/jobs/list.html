@@ -25,11 +25,19 @@
                 <option value="{{ d }}" {% if request.args.get('domain') == d %}selected{% endif %}>{{ d }}</option>
                 {% endfor %}
             </select>
+            <!-- Application Status Filter (only show for candidates) -->
+            {% if current_user.is_authenticated and current_user.user_type == 'candidate' %}
+            <select name="applied_status" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm font-medium text-gray-700 bg-white">
+                <option value="all" {% if applied_status == 'all' %}selected{% endif %}>All Jobs</option>
+                <option value="applied" {% if applied_status == 'applied' %}selected{% endif %}>Applied</option>
+                <option value="unapplied" {% if applied_status == 'unapplied' %}selected{% endif %}>Not Applied</option>
+            </select>
+            {% endif %}
             <button type="submit"
                 class="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition">
                 Search
             </button>
-            {% if search or request.args.get('domain') %}
+            {% if search or request.args.get('domain') or applied_status != 'all' %}
             <a href="{{ url_for('jobs.list_jobs') }}" class="text-sm text-gray-500 hover:text-gray-700 underline self-center">Clear filters</a>
             {% endif %}
         </form>
@@ -37,13 +45,34 @@
         <div class="flex flex-wrap gap-2 mt-4">
             {% set domain_icons = {'Backend': '🔧', 'Frontend': '🎨', 'ML / AI': '🤖', 'DevOps': '⚙️', 'Mobile': '📱', 'Data Science': '📊', 'Cybersecurity': '🔒', 'Cloud': '☁️'} %}
             {% for d in domains %}
-            <a href="{{ url_for('jobs.list_jobs', domain=d, search=search) }}"
+            <a href="{{ url_for('jobs.list_jobs', domain=d, search=search, applied_status=applied_status) }}"
                class="px-3 py-1 rounded-full text-xs font-semibold border-2 transition
                {% if request.args.get('domain') == d %}border-primary-500 bg-primary-100 text-primary-700{% else %}border-gray-200 text-gray-600 hover:border-primary-300 hover:bg-primary-50{% endif %}">
                 {{ domain_icons.get(d, '🏷️') }} {{ d }}
             </a>
             {% endfor %}
         </div>
+
+        <!-- Application Status Quick-Pills (for candidates) -->
+        {% if current_user.is_authenticated and current_user.user_type == 'candidate' %}
+        <div class="flex flex-wrap gap-2 mt-3">
+            <a href="{{ url_for('jobs.list_jobs', search=search, domain=request.args.get('domain', ''), applied_status='all') }}"
+               class="px-3 py-1 rounded-full text-xs font-semibold border-2 transition
+               {% if applied_status == 'all' %}border-accent-400 bg-accent-100 text-accent-700{% else %}border-gray-200 text-gray-600 hover:border-accent-300 hover:bg-accent-50{% endif %}">
+                📋 All Jobs
+            </a>
+            <a href="{{ url_for('jobs.list_jobs', search=search, domain=request.args.get('domain', ''), applied_status='applied') }}"
+               class="px-3 py-1 rounded-full text-xs font-semibold border-2 transition
+               {% if applied_status == 'applied' %}border-green-500 bg-green-100 text-green-700{% else %}border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50{% endif %}">
+                ✓ Applied
+            </a>
+            <a href="{{ url_for('jobs.list_jobs', search=search, domain=request.args.get('domain', ''), applied_status='unapplied') }}"
+               class="px-3 py-1 rounded-full text-xs font-semibold border-2 transition
+               {% if applied_status == 'unapplied' %}border-orange-500 bg-orange-100 text-orange-700{% else %}border-gray-200 text-gray-600 hover:border-orange-300 hover:bg-orange-50{% endif %}">
+                ○ Not Applied
+            </a>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Jobs Grid -->
@@ -91,10 +120,20 @@
                     View Details
                 </a>
                 {% if current_user.is_authenticated and current_user.user_type == 'candidate' %}
-                <a href="{{ url_for('candidates.apply_job', job_id=job.id) }}"
-                    class="flex-1 text-center bg-accent-400 text-gray-900 py-2 rounded-lg hover:bg-accent-500 font-medium text-sm">
-                    Apply Now
-                </a>
+                    {% if job.existing_application %}
+                    <button disabled
+                        class="flex-1 text-center bg-green-500 text-white py-2 rounded-lg font-medium text-sm cursor-not-allowed opacity-75 flex items-center justify-center gap-1">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        Applied
+                    </button>
+                    {% else %}
+                    <a href="{{ url_for('candidates.apply_job', job_id=job.id) }}"
+                        class="flex-1 text-center bg-accent-400 text-gray-900 py-2 rounded-lg hover:bg-accent-500 font-medium text-sm">
+                        Apply Now
+                    </a>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -105,7 +144,7 @@
     {% if jobs.pages > 1 %}
     <div class="flex justify-center gap-2">
         {% if jobs.has_prev %}
-        <a href="{{ url_for('jobs.list_jobs', page=jobs.prev_num, search=search) }}"
+        <a href="{{ url_for('jobs.list_jobs', page=jobs.prev_num, search=search, domain=request.args.get('domain', ''), applied_status=applied_status) }}"
             class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
             Previous
         </a>
@@ -116,7 +155,7 @@
         </span>
 
         {% if jobs.has_next %}
-        <a href="{{ url_for('jobs.list_jobs', page=jobs.next_num, search=search) }}"
+        <a href="{{ url_for('jobs.list_jobs', page=jobs.next_num, search=search, domain=request.args.get('domain', ''), applied_status=applied_status) }}"
             class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
             Next
         </a>
